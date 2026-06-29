@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" role="img" aria-label="SGS Certified">
+  <!-- SGS: diamond (rotated square) with SGS wordmark — follows SGS brand shape -->
+  <polygon points="40,4 76,40 40,76 4,40" fill="none" stroke="#ffffff" stroke-width="3.5"/>
+  <text x="40" y="46" text-anchor="middle" font-family="Arial Black, Helvetica Neue, sans-serif" font-weight="900" font-size="20" fill="#ffffff" letter-spacing="0.5">SGS</text>
+</svg>

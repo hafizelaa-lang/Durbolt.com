@@ -1,0 +1,806 @@
+@import "tailwindcss";
+
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-once {
+  animation: fadeSlideUp 0.5s ease-out forwards;
+}
+
+@theme {
+  --color-dark: #0D1520;
+  --color-navy: #1B2A4A;
+  --color-steel: #2C5282;
+  --color-brand: #E8631A;
+  --color-brand-dark: #CC5816;
+  --color-slate: #94A3B8;
+  --font-family-sans: "Inter", "system-ui", sans-serif;
+  --font-family-heading: "Space Grotesk", "system-ui", sans-serif;
+  --font-family-mono: "JetBrains Mono", "ui-monospace", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: #0F0F0F;
+  color: #ffffff;
+  font-family: var(--font-family-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-heading);
+  color: #FFFFFF;
+  opacity: 1;
+}
+
+/* ─── Product image shimmer ──────────────────────────────────────────── */
+.img-shimmer {
+  background: linear-gradient(90deg, #0D1520 25%, #1B2A4A 50%, #0D1520 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #060C14; }
+::-webkit-scrollbar-thumb { background: #1E3A5F; }
+::-webkit-scrollbar-thumb:hover { background: #E8631A; }
+
+/* ─── Selection ───────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(232, 99, 26, 0.25);
+  color: #fff;
+}
+
+/* ─── Input/select/textarea reset ────────────────────────────────────── */
+input, select, textarea {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #E0E0E0;
+}
+
+/* ─── Permanent card visibility — targeted, not global ─────────────────── */
+.step-card,
+.glow-card,
+.product-card,
+[class*="card"],
+[class*="Card"] {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* ─── Cinematic scroll scenes ───────────────────────────────────────────── */
+.scene-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity, transform;
+  /* Force a persistent GPU compositing layer. Without this, mobile Safari/Chrome
+     can fail to paint position:fixed elements mid-scroll-gesture (they visually
+     vanish until the scroll settles) — a rendering bug, not a JS timing one. */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.scene-layer img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.scene-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* Scene visibility — active class wins over the global lock */
+.scene-active  { opacity: 1 !important; }
+
+
+@keyframes heroGradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.hero-gradient-overlay {
+  background: linear-gradient(
+    120deg,
+    rgba(232,99,26,0.22),
+    rgba(13,21,32,0.05),
+    rgba(45,180,191,0.16),
+    rgba(13,21,32,0.1)
+  );
+  background-size: 300% 300%;
+  animation: heroGradientShift 16s ease-in-out infinite;
+  mix-blend-mode: overlay;
+}
+
+@keyframes spotlightDrift {
+  0%, 100% { transform: translate(-10%, -10%) scale(1); opacity: 0.55; }
+  50% { transform: translate(8%, 6%) scale(1.25); opacity: 0.85; }
+}
+
+.hero-spotlight {
+  background: radial-gradient(circle, rgba(232,99,26,0.35) 0%, rgba(232,99,26,0) 65%);
+  animation: spotlightDrift 12s ease-in-out infinite;
+  filter: blur(10px);
+}
+
+/* ─── Geometry-aware lightning (per-scene bolts, see App.jsx LightningStrike) ──
+   Each <path> gets its real length baked into --bolt-len (App.jsx, on mount),
+   so bolt-draw-dash always draws the *entire* path in exactly 80ms regardless
+   of how long that particular bolt is. Every keyframe below ends on its own
+   final state (fully faded) — re-striking remounts fresh <path> elements
+   (new `key`) rather than toggling visibility, so nothing needs a "hide" step.
+
+   Cinematic strike timeline (600ms total, frame markers in ms from strike
+   start, t=0):
+     0-20    full-hero white flash (.bolt-screen-flash)
+     20-100  primary bolt draws at full intensity, max glow (.bolt-glow)
+     100-200 secondary bolts + micro-arcs fire (.bolt-secondary / .bolt-micro)
+     200-400 fade begins; primary lingers at 30% opacity (afterimage burn)
+     400-600 full fade to nothing
+   The primary/core animations carry a 20ms delay so their draw starts right
+   as the flash finishes, putting every other tier's timing in sync with it. */
+@keyframes bolt-draw-dash {
+  from { stroke-dashoffset: var(--bolt-len, 0); }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes bolt-decay-glow {
+  0%   { opacity: 1;   filter: drop-shadow(0 0 8px var(--bolt-glow-tight)) drop-shadow(0 0 20px var(--bolt-glow-mid)) drop-shadow(0 0 40px var(--bolt-glow-wide)); }
+  31%  { opacity: 1;   filter: drop-shadow(0 0 8px var(--bolt-glow-tight)) drop-shadow(0 0 20px var(--bolt-glow-mid)) drop-shadow(0 0 40px var(--bolt-glow-wide)); }
+  65%  { opacity: 0.3; filter: drop-shadow(0 0 3px var(--bolt-glow-tight)) drop-shadow(0 0 8px var(--bolt-glow-mid)) drop-shadow(0 0 14px var(--bolt-glow-wide)); }
+  100% { opacity: 0;   filter: drop-shadow(0 0 2px var(--bolt-glow-tight)) drop-shadow(0 0 4px var(--bolt-glow-mid)) drop-shadow(0 0 6px var(--bolt-glow-wide)); }
+}
+
+.bolt-glow {
+  animation: bolt-draw-dash 80ms linear 20ms forwards, bolt-decay-glow 580ms ease-out 20ms forwards;
+}
+
+@keyframes bolt-decay-core {
+  0%   { opacity: 0.9; }
+  31%  { opacity: 0.9; }
+  65%  { opacity: 0.25; }
+  100% { opacity: 0; }
+}
+
+.bolt-core {
+  animation: bolt-draw-dash 80ms linear 20ms forwards, bolt-decay-core 580ms ease-out 20ms forwards;
+}
+
+/* Secondary bolts: fire at frame 3 (100ms), draw fast, dissipate by frame 4
+   end (400ms) — they don't share the primary's afterimage linger. */
+@keyframes bolt-secondary-decay {
+  0%   { opacity: 0.8; filter: drop-shadow(0 0 4px var(--bolt-glow-tight)) drop-shadow(0 0 10px var(--bolt-glow-mid)); }
+  60%  { opacity: 0.5; filter: drop-shadow(0 0 3px var(--bolt-glow-tight)) drop-shadow(0 0 6px var(--bolt-glow-mid)); }
+  100% { opacity: 0;   filter: drop-shadow(0 0 1px var(--bolt-glow-tight)); }
+}
+
+.bolt-secondary {
+  animation: bolt-draw-dash 60ms linear 100ms forwards, bolt-secondary-decay 300ms ease-out 100ms forwards;
+}
+
+/* Micro-arcs: corona-discharge sparks — a quick flicker-in/flicker-out, no
+   draw animation (too small for it to read). Per-instance delay (50-100ms
+   into frame 3) is set inline in App.jsx since each spark's position is
+   randomized there too. */
+@keyframes bolt-micro-flicker {
+  0%   { opacity: 0; }
+  30%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.bolt-micro {
+  animation: bolt-micro-flicker 80ms ease-out forwards;
+}
+
+@keyframes bolt-screen-flash {
+  0%   { opacity: 0; }
+  10%  { opacity: 0.15; }
+  100% { opacity: 0; }
+}
+
+.bolt-screen-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  animation: bolt-screen-flash 220ms ease-out forwards;
+}
+
+/* "Sound design hint": the facility lights flickering, via a blended white
+   overlay rather than animating filter:brightness() on the real <img> (which
+   would need the image itself to remount on every strike). */
+@keyframes bolt-brightness-pulse {
+  0%   { opacity: 0; }
+  50%  { opacity: 0.35; }
+  100% { opacity: 0; }
+}
+
+.bolt-brightness-pulse {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  mix-blend-mode: overlay;
+  animation: bolt-brightness-pulse 150ms ease-in-out 20ms forwards;
+}
+
+/* ─── Ambient electrical atmosphere between strikes (see AmbientAtmosphere in
+   App.jsx) — runs independently of the strike cycle, so the hero is never
+   visually "dead" between full strikes. */
+@keyframes bolt-ambient-hum {
+  0%, 100% { opacity: 0.04; }
+  50%      { opacity: 0.08; }
+}
+
+.bolt-ambient-hum {
+  opacity: 0.06 !important;
+  animation: bolt-ambient-hum 3.5s ease-in-out infinite;
+}
+
+@keyframes bolt-ambient-spark-flicker {
+  0%   { opacity: 0; }
+  35%  { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+.bolt-ambient-spark {
+  animation: bolt-ambient-spark-flicker 80ms ease-out forwards;
+}
+
+@keyframes bolt-ambient-glow-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.15); }
+}
+
+.bolt-ambient-glow {
+  border-radius: 50%;
+  filter: blur(20px);
+  animation: bolt-ambient-glow-pulse 2s ease-in-out infinite;
+}
+
+/* Edge micro-bolts: thin structural-edge strokes, 60ms draw, 250ms decay */
+@keyframes bolt-edge-micro-decay {
+  0%   { opacity: 0.7; filter: drop-shadow(0 0 3px var(--bolt-glow-tight)) drop-shadow(0 0 7px var(--bolt-glow-mid)); }
+  55%  { opacity: 0.4; filter: drop-shadow(0 0 2px var(--bolt-glow-tight)) drop-shadow(0 0 4px var(--bolt-glow-mid)); }
+  100% { opacity: 0;   filter: none; }
+}
+
+.bolt-edge-micro {
+  animation: bolt-draw-dash 60ms linear forwards, bolt-edge-micro-decay 250ms ease-out forwards;
+}
+
+/* Horizontal cable arc: left-to-right overhead line discharge, 80ms draw, 400ms decay */
+@keyframes bolt-horiz-arc-decay {
+  0%   { opacity: 0.75; filter: drop-shadow(0 0 3px var(--bolt-glow-tight)) drop-shadow(0 0 10px var(--bolt-glow-mid)); }
+  50%  { opacity: 0.45; filter: drop-shadow(0 0 2px var(--bolt-glow-tight)) drop-shadow(0 0 5px var(--bolt-glow-mid)); }
+  100% { opacity: 0;    filter: none; }
+}
+
+.bolt-horiz-arc {
+  animation: bolt-draw-dash 80ms linear forwards, bolt-horiz-arc-decay 400ms ease-out forwards;
+}
+
+/* Mobile perf budget: 3 stacked drop-shadows (each its own blur pass) is the
+   most expensive part of this system. Below 768px, swap in a single-layer
+   glow with the same opacity curve so 60fps holds; App.jsx also drops
+   secondary bolts entirely and caps micro-arcs at 2 on this breakpoint. */
+@media (max-width: 767px) {
+  @keyframes bolt-decay-glow {
+    0%   { opacity: 1;   filter: drop-shadow(0 0 14px var(--bolt-glow-mid)); }
+    31%  { opacity: 1;   filter: drop-shadow(0 0 14px var(--bolt-glow-mid)); }
+    65%  { opacity: 0.3; filter: drop-shadow(0 0 6px var(--bolt-glow-mid)); }
+    100% { opacity: 0;   filter: drop-shadow(0 0 3px var(--bolt-glow-mid)); }
+  }
+  .bolt-ambient-glow { filter: blur(12px); }
+}
+
+/* ─── Grain / noise texture overlay (global, very subtle) ───────────────── */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.05 !important;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grainShift 1.1s steps(4) infinite;
+}
+
+@keyframes grainShift {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-1.5%, 1%); }
+  50% { transform: translate(1%, -1.5%); }
+  75% { transform: translate(-1%, -1%); }
+  100% { transform: translate(0, 0); }
+}
+
+/* ─── Glow-on-hover utility (cards) ──────────────────────────────────────── */
+.glow-card {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease, transform 0.3s ease;
+}
+.glow-card:hover {
+  border-color: rgba(232,99,26,0.45) !important;
+  box-shadow: 0 0 30px rgba(232,99,26,0.3);
+  background-color: rgba(20,20,20,0.92);
+  transform: translateY(-4px);
+}
+
+/* ─── Process-step cards — no entrance animation, always visible ──────────── */
+.step-card {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+/* ─── Animated rotating gradient border ──────────────────────────────────────
+   Wrapper has a 1.5px padding + overflow:hidden; an oversized rotating
+   conic-gradient layer behind the inner panel peeks through only that
+   padding gap, reading as a thin animated glowing ring. No mask-composite
+   or @property needed, so it's broadly compatible. */
+.glow-border-wrap {
+  position: relative;
+  padding: 1.5px;
+  overflow: hidden;
+  isolation: isolate;
+}
+.glow-border-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -60%;
+  background: conic-gradient(from 0deg, transparent 0deg, #E8631A 60deg, #CC5816 110deg, transparent 170deg, transparent 360deg);
+  animation: spin360 5s linear infinite;
+  z-index: 0;
+}
+.glow-border-wrap > .glow-border-inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Form panel (info block) ────────────────────────────────────────────── */
+.glass-panel {
+  background: rgba(10,10,10,0.88);
+}
+
+/* ─── Bento grid (Why Durbolt) ────────────────────────────────────────── */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, minmax(180px, auto));
+  gap: 1rem;
+}
+.bento-grid > *:nth-child(1) { grid-column: span 2; grid-row: span 2; }
+.bento-grid > *:nth-child(2) { grid-column: span 2; grid-row: span 1; }
+.bento-grid > *:nth-child(3) { grid-column: span 1; grid-row: span 1; }
+.bento-grid > *:nth-child(4) { grid-column: span 1; grid-row: span 1; }
+
+@media (max-width: 1024px) {
+  .bento-grid { grid-template-columns: repeat(2, 1fr); }
+  .bento-grid > *:nth-child(1) { grid-column: span 2; grid-row: span 1; }
+  .bento-grid > *:nth-child(2) { grid-column: span 2; grid-row: span 1; }
+  .bento-grid > *:nth-child(3) { grid-column: span 1; }
+  .bento-grid > *:nth-child(4) { grid-column: span 1; }
+}
+@media (max-width: 640px) {
+  .bento-grid { grid-template-columns: 1fr; grid-template-rows: none; }
+  .bento-grid > * { grid-column: span 1 !important; grid-row: span 1 !important; }
+}
+
+/* ─── Product card hover (image scale only) ──────────────────────────────── */
+.product-card-img { transition: transform 0.5s cubic-bezier(0.22,1,0.36,1); }
+.product-card:hover .product-card-img { transform: scale(1.1); }
+
+/* ─── Floating label inputs ──────────────────────────────────────────── */
+.float-field { position: relative; }
+.float-field input,
+.float-field textarea,
+.float-field select {
+  width: 100%;
+  background: rgba(8,14,22,0.6);
+  border: 1px solid rgba(44,82,130,0.35);
+  color: #fff;
+  padding: 18px 16px 8px;
+  font-size: 0.85rem;
+  outline: none;
+  font-family: "Inter", sans-serif;
+  letter-spacing: 0.02em;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  border-radius: 2px;
+}
+.float-field textarea { padding-top: 22px; }
+.float-field input:focus,
+.float-field textarea:focus,
+.float-field select:focus {
+  border-color: rgba(232,99,26,0.6);
+  box-shadow: 0 0 20px rgba(232,99,26,0.12);
+}
+.float-field label {
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  font-size: 0.8rem;
+  color: #E0E0E0;
+  pointer-events: none;
+  transition: transform 0.2s ease, font-size 0.2s ease, color 0.2s ease, top 0.2s ease;
+  transform-origin: left top;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: calc(100% - 32px);
+}
+.float-field input:focus ~ label,
+.float-field input:not(:placeholder-shown) ~ label,
+.float-field textarea:focus ~ label,
+.float-field textarea:not(:placeholder-shown) ~ label,
+.float-field.has-value label {
+  top: 6px;
+  font-size: 0.62rem;
+  color: #E8631A;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@keyframes spin360 { to { transform: rotate(360deg); } }
+.spin-loader { animation: spin360 0.8s linear infinite; }
+
+/* ─── Circuit System ──────────────────────────────────────────────────────
+   Persistent border overlay (CircuitBorder), click/touch shocks (ShockLayer)
+   and scroll-triggered border reactions + scanlines (SectionEnterEffects),
+   all defined in src/components/CircuitSystem.jsx. Color is var(--color-brand)
+   everywhere — the same hex as the "POWER" wordmark, with a literal fallback
+   in case the Tailwind v4 @theme var isn't in scope for some consumer. */
+
+.circuit-border-svg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.circuit-trace-base {
+  fill: none;
+  stroke: var(--color-brand, #E8631A);
+  stroke-width: 1;
+  opacity: 0.35 !important;
+  transition: opacity 0.25s ease, filter 0.25s ease;
+}
+@media (max-width: 767px) {
+  .circuit-trace-base { opacity: 0.25 !important; }
+}
+.circuit-border-svg.is-surging .circuit-trace-base {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px var(--color-brand, #E8631A));
+  transition: opacity 0.05s linear, filter 0.05s linear;
+}
+.circuit-border-svg.is-flashing .circuit-trace-base {
+  opacity: 1;
+  transition: none;
+}
+
+.circuit-trace-pulse {
+  fill: none;
+  stroke: var(--color-brand, #E8631A);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 1;
+  filter: drop-shadow(0 0 4px var(--color-brand, #E8631A));
+  animation: circuitFlow 4s linear infinite;
+}
+@keyframes circuitFlow {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: calc(var(--circuit-len, 1000) * -1); }
+}
+@keyframes circuitFlowSurge {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: calc(var(--circuit-len, 1000) * -1); }
+}
+.circuit-border-svg.is-surging .circuit-trace-pulse {
+  animation: circuitFlowSurge 0.6s linear infinite;
+  filter: drop-shadow(0 0 8px var(--color-brand, #E8631A)) drop-shadow(0 0 3px #fff);
+}
+
+.circuit-trace-draw {
+  fill: none;
+  stroke: var(--color-brand, #E8631A);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 1;
+  filter: drop-shadow(0 0 4px var(--color-brand, #E8631A));
+  animation: circuitDrawIn 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transition: opacity 0.3s ease;
+}
+@keyframes circuitDrawIn {
+  from { stroke-dashoffset: var(--circuit-draw-len, 0); }
+  to   { stroke-dashoffset: 0; }
+}
+
+.circuit-nodes-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  pointer-events: none;
+}
+.circuit-node {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  transform: translate(-50%, -50%);
+}
+.circuit-node-pulse {
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+}
+.circuit-node-pulse.is-pulsing {
+  animation: circuitNodeScale 0.5s ease-out;
+}
+@keyframes circuitNodeScale {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.8); filter: drop-shadow(0 0 6px var(--color-brand, #E8631A)); }
+  100% { transform: scale(1); }
+}
+.circuit-node-spin {
+  width: 100%;
+  height: 100%;
+  background: var(--color-brand, #E8631A);
+  opacity: 0.35 !important;
+  will-change: transform;
+  animation: circuitNodeRotate 8s linear infinite;
+}
+@media (max-width: 767px) {
+  .circuit-node-spin { opacity: 0.25 !important; }
+}
+@keyframes circuitNodeRotate {
+  to { transform: rotate(360deg); }
+}
+
+.circuit-burst {
+  position: fixed;
+  width: 2px;
+  height: 60px;
+  pointer-events: none;
+  z-index: 9998;
+  filter: drop-shadow(0 0 4px var(--color-brand, #E8631A));
+  will-change: transform;
+}
+.circuit-burst.top {
+  top: 8px;
+  background: linear-gradient(180deg, var(--color-brand, #E8631A), transparent);
+  animation: circuitBurstTop 320ms ease-out forwards;
+}
+.circuit-burst.bottom {
+  bottom: 8px;
+  background: linear-gradient(0deg, var(--color-brand, #E8631A), transparent);
+  animation: circuitBurstBottom 320ms ease-out forwards;
+}
+@keyframes circuitBurstTop {
+  0%   { transform: translateY(0); opacity: 0; }
+  25%  { opacity: 1; }
+  60%  { transform: translateY(60px); opacity: 0.8; }
+  100% { transform: translateY(0); opacity: 0; }
+}
+@keyframes circuitBurstBottom {
+  0%   { transform: translateY(0); opacity: 0; }
+  25%  { opacity: 1; }
+  60%  { transform: translateY(-60px); opacity: 0.8; }
+  100% { transform: translateY(0); opacity: 0; }
+}
+
+.shock-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9998;
+  pointer-events: none;
+  overflow: visible;
+}
+.shock-ring {
+  fill: none;
+  stroke: var(--color-brand, #E8631A);
+  stroke-width: 1;
+  opacity: 0.9;
+  animation: shockRingExpand 400ms ease-out forwards;
+}
+@keyframes shockRingExpand {
+  from { r: 0px; opacity: 0.9; }
+  to   { r: 120px; opacity: 0; }
+}
+.shock-micro {
+  stroke: var(--color-brand, #E8631A);
+  stroke-width: 0.6;
+  animation: shockMicroFlicker 200ms ease-out forwards;
+}
+@keyframes shockMicroFlicker {
+  0%   { opacity: 0; }
+  30%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.circuit-scanline-area {
+  position: fixed;
+  z-index: 35;
+  overflow: hidden;
+  pointer-events: none;
+}
+.circuit-scanline-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: rgba(232, 99, 26, 0.08);
+  box-shadow: 0 0 6px rgba(232, 99, 26, 0.08);
+  animation: circuitScanlineSweep 400ms linear forwards;
+}
+@keyframes circuitScanlineSweep {
+  from { top: 0%; }
+  to   { top: 100%; }
+}
+
+/* ─── Ambient electrical atmosphere on non-hero division backdrops ───────────
+   Hero (scene 0) keeps its real lightning strikes running continuously,
+   mounted permanently regardless of scroll — see SceneBackdrop in App.jsx.
+   Scenes 1-5 get this instead: a slow brightness pulse on the image and a
+   breathing vignette, so the backdrop still feels "live" without bolts
+   firing on every section. */
+@keyframes divisionBrightnessPulse {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.08); }
+}
+.division-brightness-pulse {
+  animation: divisionBrightnessPulse 6s ease-in-out infinite;
+}
+@keyframes divisionVignetteBreathe {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.8; }
+}
+.division-vignette-breathe {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 38%, rgba(2,4,10,0.55) 100%);
+  animation: divisionVignetteBreathe 7s ease-in-out infinite;
+}
+
+/* ─── Product card: text layout + circuit-trace hover ──────────────────────
+   line-clamp (not a hard height) so long names/specs degrade gracefully
+   instead of clipping mid-word, and every card in a row still lines up. */
+.product-card { position: relative; }
+.product-card-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-height: 2.4em;
+}
+.product-card-spec {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  min-height: 3.6em;
+}
+.product-card.glow-card:hover {
+  background-color: rgba(224, 123, 57, 0.04);
+}
+
+.card-circuit-trace {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.cct {
+  position: absolute;
+  background: var(--color-brand, #E8631A);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  opacity: 0 !important;
+}
+.cct-top-left, .cct-top-right, .cct-bottom-left, .cct-bottom-right {
+  height: 1px;
+  width: 50%;
+  transform: scaleX(0);
+}
+.cct-right-top, .cct-right-bottom, .cct-left-top, .cct-left-bottom {
+  width: 1px;
+  height: 50%;
+  transform: scaleY(0);
+}
+.cct-top-left     { top: 0; left: 0; transform-origin: left center; }
+.cct-top-right    { top: 0; right: 0; transform-origin: right center; }
+.cct-bottom-left  { bottom: 0; left: 0; transform-origin: left center; }
+.cct-bottom-right { bottom: 0; right: 0; transform-origin: right center; }
+.cct-right-top    { top: 0; right: 0; transform-origin: top center; }
+.cct-right-bottom { bottom: 0; right: 0; transform-origin: bottom center; }
+.cct-left-top     { top: 0; left: 0; transform-origin: top center; }
+.cct-left-bottom  { bottom: 0; left: 0; transform-origin: bottom center; }
+
+.product-card:hover .cct { opacity: 1 !important; transform: scaleX(1); }
+.product-card:hover .cct-right-top,
+.product-card:hover .cct-right-bottom,
+.product-card:hover .cct-left-top,
+.product-card:hover .cct-left-bottom { transform: scaleY(1); }
+
+/* ─── Readability pass: body/description copy, sitewide ────────────────────
+   15px minimum (mobile), 16px desktop, 1.7 line-height. Applied to card
+   bodies and section description paragraphs in place of the old
+   text-xs/text-sm + leading-relaxed Tailwind combo. */
+.readable-text {
+  font-size: 15px;
+  line-height: 1.7;
+  opacity: 1;
+}
+@media (min-width: 768px) {
+  .readable-text { font-size: 16px; }
+}
+
+/* ─── Desktop crosshair cursor ───────────────────────────────────────────── */
+@media (hover: hover) and (pointer: fine) {
+  body {
+    cursor:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cline x1='10' y1='2' x2='10' y2='18' stroke='%23E8631A' stroke-width='1.5'/%3E%3Cline x1='2' y1='10' x2='18' y2='10' stroke='%23E8631A' stroke-width='1.5'/%3E%3C/svg%3E")
+      10 10, crosshair;
+  }
+}
+
+/* ─── Ken Burns hero + stagger entrance animations ───────────────────────── */
+@keyframes heroKenBurns {
+  0%   { transform: scale(1.0)  translate(0%,     0%);   }
+  50%  { transform: scale(1.07) translate(-0.8%,  0.4%); }
+  100% { transform: scale(1.0)  translate(0%,     0%);   }
+}
+.hero-ken {
+  animation: heroKenBurns 18s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes heroFadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-enter-0 { animation: heroFadeUp 600ms ease-out  100ms both; }
+.hero-enter-1 { animation: heroFadeUp 650ms ease-out  250ms both; }
+.hero-enter-2 { animation: heroFadeUp 650ms ease-out  430ms both; }
+.hero-enter-3 { animation: heroFadeUp 650ms ease-out  640ms both; }
+
+/* ─── KPI counter grid (4-col → 2-col → 1-col) ──────────────────────────── */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
+@media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .kpi-grid { grid-template-columns: 1fr; } }
+

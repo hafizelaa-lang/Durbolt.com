@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 76" role="img" aria-label="CE Mark">
+  <!-- CE marking — heavy-weight letterform matching the EU conformity mark -->
+  <g fill="none" stroke="#ffffff">
+    <!-- C: circle arc ~270°, gap facing right -->
+    <path d="M 54,38 m 28,0 a 28,28 0 1 1 -17.5,-23.8" stroke-width="10" stroke-linecap="round"/>
+    <!-- E: vertical bar + 3 horizontal bars -->
+    <line x1="66" y1="10" x2="66" y2="66" stroke-width="10" stroke-linecap="square"/>
+    <line x1="66" y1="10" x2="100" y2="10" stroke-width="9" stroke-linecap="square"/>
+    <line x1="66" y1="38" x2="92"  y2="38" stroke-width="9" stroke-linecap="square"/>
+    <line x1="66" y1="66" x2="100" y2="66" stroke-width="9" stroke-linecap="square"/>
+  </g>
+</svg>
