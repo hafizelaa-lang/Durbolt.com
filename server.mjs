@@ -393,8 +393,8 @@ async function handleRFQ(req, res) {
   req.on("data", (c) => { body += c; });
   req.on("end", async () => {
     try {
-      const { name, company, email, phone, product, message, attachments = [] } = JSON.parse(body);
-      console.log(`[RFQ] Incoming: name=${name} company=${company} email=${email} product=${product} files=${attachments.length}`);
+      const { name, company, email, phone, sku, product, message, attachments = [] } = JSON.parse(body);
+      console.log(`[RFQ] Incoming: name=${name} company=${company} email=${email} product=${product} sku=${sku} files=${attachments.length}`);
       if (!name || !company || !email || !product) {
         const missing = ["name","company","email","product"].filter(f => !({name,company,email,product}[f]));
         console.error("[RFQ] Missing required fields:", missing.join(", "));
@@ -440,6 +440,7 @@ async function handleRFQ(req, res) {
       ${row("EMAIL", `<a href="mailto:${esc(email)}" style="color:#E8631A;text-decoration:none">${esc(email)}</a>`)}
       ${row("PHONE", esc(phone) || "—")}
       ${row("PRODUCT", esc(product))}
+      ${sku ? row("PART NO.", `<span style="font-family:monospace;color:#E8631A;font-weight:700;letter-spacing:0.08em">${esc(sku)}</span>`) : ""}
     </table>
 
     ${message ? `<div style="margin:24px 0 0">
@@ -494,6 +495,7 @@ async function handleRFQ(req, res) {
         name, company, email,
         phone: phone || "",
         product,
+        sku: sku || "",
         message: message || "",
         attachments_count: attachments.length,
         attachments: attachments.map(({ filename, content, contentType }) => ({

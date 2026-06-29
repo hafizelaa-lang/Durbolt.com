@@ -1790,6 +1790,15 @@ function RFQForm() {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
   const onChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+  const onProductChange = (e) => {
+    const selectedName = e.target.value;
+    let sku = "";
+    for (const div of DIVISIONS) {
+      const p = div.products.find((prod) => prod.name === selectedName);
+      if (p) { sku = p.sku || ""; break; }
+    }
+    setForm((prev) => ({ ...prev, product: selectedName, sku }));
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1797,8 +1806,16 @@ function RFQForm() {
     const skuParam = params.get("sku");
     const productParam = params.get("product");
     if (pkg) setForm((f) => ({ ...f, message: `Requesting quote for package: ${pkg}` }));
-    if (skuParam) setForm((f) => ({ ...f, sku: skuParam }));
-    if (productParam) setForm((f) => ({ ...f, product: productParam }));
+    if (productParam) {
+      let resolvedSku = skuParam || "";
+      for (const div of DIVISIONS) {
+        const p = div.products.find((prod) => prod.name === productParam);
+        if (p) { resolvedSku = p.sku || resolvedSku; break; }
+      }
+      setForm((f) => ({ ...f, product: productParam, sku: resolvedSku }));
+    } else if (skuParam) {
+      setForm((f) => ({ ...f, sku: skuParam }));
+    }
   }, []);
 
   const onAddFiles = (incoming) => {
@@ -1880,22 +1897,53 @@ function RFQForm() {
                       <FloatingField name="company" label="Company / Organization *" required value={form.company} onChange={onChange} />
                       <FloatingField name="email" label="Business Email *" type="email" required value={form.email} onChange={onChange} />
                       <FloatingField name="phone" label="Phone Number" type="tel" value={form.phone} onChange={onChange} />
-                      <FloatingField name="sku" label="Part No. / SKU (e.g. DBT-01-GEN-001)" value={form.sku} onChange={onChange} />
                     </div>
 
-                    <div className={`float-field mb-4 ${form.product ? "has-value" : ""}`}>
-                      <select name="product" value={form.product} onChange={onChange} required style={{ appearance: "none" }}>
-                        <option value="" disabled style={{ background: "#0D1520" }}></option>
+                    <div className={`float-field mb-3 ${form.product ? "has-value" : ""}`}>
+                      <select name="product" value={form.product} onChange={onProductChange} required style={{ appearance: "none" }}>
+                        <option value="" disabled style={{ background: "#0D1520", color: "#444" }}></option>
                         {DIVISIONS.map((d) => (
-                          <optgroup key={d.id} label={`── Division ${d.id}: ${d.name}`} style={{ background: "#0D1520" }}>
+                          <optgroup
+                            key={d.id}
+                            label={`DIV 0${d.id} — ${d.name.toUpperCase()}`}
+                            style={{ background: "#0D1520", color: "#E8631A", fontWeight: 700 }}
+                          >
                             {d.products.map((p) => (
-                              <option key={p.name} value={p.name} style={{ background: "#0D1520" }}>{p.name}</option>
+                              <option key={p.name} value={p.name} style={{ background: "#0D1520", color: "#fff", fontWeight: 400 }}>
+                                {p.name}
+                              </option>
                             ))}
                           </optgroup>
                         ))}
-                        <option value="General Inquiry" style={{ background: "#0D1520" }}>General Inquiry</option>
+                        <option value="General Inquiry" style={{ background: "#0D1520", color: "#888" }}>General Inquiry</option>
                       </select>
                       <label>Product of Interest *</label>
+                    </div>
+
+                    <div className="float-field has-value mb-4" style={{ position: "relative" }}>
+                      <input
+                        name="sku"
+                        type="text"
+                        value={form.sku}
+                        readOnly
+                        placeholder="Auto-fills when product selected"
+                        style={{
+                          background: "rgba(232,99,26,0.04)",
+                          cursor: "default",
+                          paddingRight: "60px",
+                          color: form.sku ? "#E8631A" : "#444",
+                          fontFamily: MONO,
+                          letterSpacing: form.sku ? "0.1em" : "normal",
+                        }}
+                      />
+                      <label>Part No. / SKU</label>
+                      <div style={{
+                        position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)",
+                        fontSize: "0.55rem", fontFamily: MONO, letterSpacing: "0.14em",
+                        color: form.sku ? "#E8631A" : "#333", fontWeight: 700,
+                        border: `1px solid ${form.sku ? "rgba(232,99,26,0.3)" : "rgba(255,255,255,0.06)"}`,
+                        padding: "2px 5px", background: "rgba(0,0,0,0.3)",
+                      }}>AUTO</div>
                     </div>
 
                     <div className="mb-4">
