@@ -19,9 +19,9 @@ const HTML_PATH = path.join(OUT_DIR, 'index.html');
 const ACCENT  = '#E8631A';
 const DARK_BG = '#060C14';
 const CARD_BG = '#0A1220';
-const SANS    = '"Barlow Condensed", "Arial Narrow", sans-serif';
-const MONO    = '"JetBrains Mono", monospace';
-const BODY    = '"Inter", "Segoe UI", sans-serif';
+const SANS    = "'Barlow Condensed', 'Arial Narrow', sans-serif";
+const MONO    = "'JetBrains Mono', monospace";
+const BODY    = "'Inter', 'Segoe UI', sans-serif";
 
 const PLACEHOLDER = `data:image/svg+xml;base64,${Buffer.from(
   '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="100%" height="100%" fill="#0d1728"/><text x="50%" y="50%" fill="#1e2d45" font-size="16" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif">IMAGE</text></svg>'
@@ -96,13 +96,13 @@ body{background:#050A12;-webkit-print-color-adjust:exact;print-color-adjust:exac
 @page{size:297mm 210mm;margin:0;}
 table{border-collapse:collapse;}
 /* ── Web Viewer ──────────────────────────────────────────────────────────── */
-.viewer-toolbar{position:fixed;top:0;left:0;right:0;height:52px;background:#080E18;border-bottom:2px solid #E8631A;display:flex;align-items:center;justify-content:space-between;padding:0 24px;z-index:9999;box-sizing:border-box;}
-.viewer-logo{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-weight:800;font-size:16px;letter-spacing:0.1em;color:#fff;white-space:nowrap;flex-shrink:0;}
-.viewer-meta{font-family:"JetBrains Mono",monospace;font-size:9px;color:#4a4a5a;letter-spacing:0.14em;text-align:center;flex:1;padding:0 16px;}
-.viewer-dl{font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;color:#E8631A;letter-spacing:0.1em;text-decoration:none;white-space:nowrap;border:1px solid rgba(232,99,26,0.4);padding:7px 16px;flex-shrink:0;}
+.viewer-toolbar{position:fixed;top:0;left:0;right:0;height:52px;background:#080E18;border-bottom:2px solid #E8631A;display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;gap:8px;padding:0 12px;z-index:9999;box-sizing:border-box;}
+.viewer-logo{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-weight:800;font-size:13px;letter-spacing:0.1em;color:#fff;white-space:nowrap;flex-shrink:0;}
+.viewer-meta{font-family:"JetBrains Mono",monospace;font-size:7px;color:#6a6a7a;letter-spacing:0.14em;text-align:center;flex:1;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.viewer-dl{font-family:"JetBrains Mono",monospace;font-size:8px;font-weight:700;color:#E8631A;letter-spacing:0.1em;text-decoration:none;white-space:nowrap;border:1px solid rgba(232,99,26,0.4);padding:5px 10px;flex-shrink:0;}
 .viewer-dl:hover{background:rgba(232,99,26,0.1);}
-.viewer-pages{padding-top:68px;padding-bottom:48px;display:flex;flex-direction:column;align-items:flex-start;background:#050A12;}
-.viewer-pages .page{box-shadow:0 6px 32px rgba(0,0,0,0.65),0 0 0 1px rgba(232,99,26,0.07);}
+.viewer-pages{padding-top:68px;padding-bottom:48px;display:flex;flex-direction:column;align-items:center;background:#050A12;overflow-x:hidden;}
+.viewer-pages .page{box-shadow:0 6px 32px rgba(0,0,0,0.65),0 0 0 1px rgba(232,99,26,0.07);touch-action:pan-y;}
 @media print{.viewer-toolbar{display:none!important;}.viewer-pages{padding-top:0!important;}body,html{margin:0;padding:0;}.page{margin:0;}}
 `;
 
@@ -141,22 +141,22 @@ function coverPage() {
     <div style="margin-bottom:18px;">${logoHTML(30)}</div>
     <div style="font-family:${SANS};font-weight:900;font-size:78px;line-height:0.88;color:#fff;letter-spacing:-0.02em;text-transform:uppercase;margin-bottom:18px;">PRODUCT<br><span style="color:${ACCENT};">CATALOGUE</span></div>
     <div style="width:44px;height:3px;background:${ACCENT};margin-bottom:16px;"></div>
-    <div style="font-family:${BODY};font-size:10px;color:#555;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:5px;">CRITICAL POWER INFRASTRUCTURE</div>
-    <div style="font-family:${MONO};font-size:8.5px;color:#3a3a4a;letter-spacing:0.1em;">2025 EDITION &nbsp;·&nbsp; durbolt.com</div>
+    <div style="font-family:${BODY};font-size:10px;color:#A0AEC0;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:5px;">CRITICAL POWER INFRASTRUCTURE</div>
+    <div style="font-family:${MONO};font-size:8.5px;color:#888;letter-spacing:0.1em;">2025 EDITION &nbsp;·&nbsp; durbolt.com</div>
   </div>
 
   <div style="position:absolute;top:50%;right:42px;transform:translateY(-50%);text-align:right;">
     <div style="font-family:${MONO};font-size:7px;color:${ACCENT};letter-spacing:0.22em;text-transform:uppercase;margin-bottom:18px;">OUR DIVISIONS</div>
     ${DIVISIONS.map(d => `
     <div style="margin-bottom:16px;">
-      <div style="font-family:${SANS};font-weight:700;font-size:13.5px;color:#e0e0e8;letter-spacing:0.04em;text-transform:uppercase;">${d.name}</div>
-      <div style="font-family:${BODY};font-size:7.5px;color:#3a3a50;margin-top:2px;">${d.tagline}</div>
+      <div style="font-family:${SANS};font-weight:700;font-size:13.5px;color:#FFFFFF;letter-spacing:0.04em;text-transform:uppercase;">${d.name}</div>
+      <div style="font-family:${BODY};font-size:7.5px;color:#888;margin-top:2px;">${d.tagline}</div>
     </div>`).join('')}
   </div>
 
   <div style="position:absolute;bottom:0;left:0;right:0;height:26px;background:rgba(232,99,26,0.06);border-top:1px solid rgba(232,99,26,0.12);display:flex;align-items:center;padding:0 42px;justify-content:space-between;">
-    <span style="font-family:${MONO};font-size:6.5px;color:#2a2a3a;letter-spacing:0.14em;">FACTORY-DIRECT PRICING &nbsp;·&nbsp; GLOBAL FULFILLMENT &nbsp;·&nbsp; 44 PRODUCT LINES</span>
-    <span style="font-family:${MONO};font-size:6.5px;color:#2a2a3a;">info@durbolt.com</span>
+    <span style="font-family:${MONO};font-size:6.5px;color:#666;letter-spacing:0.14em;">FACTORY-DIRECT PRICING &nbsp;·&nbsp; GLOBAL FULFILLMENT &nbsp;·&nbsp; 44 PRODUCT LINES</span>
+    <span style="font-family:${MONO};font-size:6.5px;color:#666;">info@durbolt.com</span>
   </div>
 </div>`;
 }
@@ -172,10 +172,10 @@ function aboutPage(num) {
     <div style="flex:1.1;">
       <div style="font-family:${MONO};font-size:7px;color:${ACCENT};letter-spacing:0.2em;text-transform:uppercase;margin-bottom:8px;">ABOUT DURBOLT POWER</div>
       <div style="font-family:${SANS};font-weight:900;font-size:34px;color:#fff;text-transform:uppercase;line-height:0.95;letter-spacing:0.01em;margin-bottom:16px;">Critical Infrastructure.<br><span style="color:${ACCENT};">Built to Last.</span></div>
-      <p style="font-family:${BODY};font-size:8.5px;color:#666;line-height:1.75;margin-bottom:12px;">
+      <p style="font-family:${BODY};font-size:8.5px;color:#A0AEC0;line-height:1.75;margin-bottom:12px;">
         Durbolt Power is a B2B supplier of industrial-grade critical power infrastructure — engineered for the most demanding environments in data centers, oil &amp; gas, utilities, and mission-critical facilities worldwide.
       </p>
-      <p style="font-family:${BODY};font-size:8.5px;color:#666;line-height:1.75;margin-bottom:16px;">
+      <p style="font-family:${BODY};font-size:8.5px;color:#A0AEC0;line-height:1.75;margin-bottom:16px;">
         With direct factory relationships and global fulfillment capability, we deliver 44 product lines across four specialized divisions — from 500kW generator sets to 100MWh containerized BESS deployments.
       </p>
       <div style="width:32px;height:2px;background:${ACCENT};margin-bottom:14px;"></div>
@@ -183,7 +183,7 @@ function aboutPage(num) {
       ${['Factory-direct pricing — no middlemen', 'Global fulfillment: USA, UAE, KSA, Egypt', 'Custom engineering &amp; turnkey solutions', 'Full compliance: CE, UL, IEC, ISO', 'Technical support &amp; site commissioning'].map(cap => `
       <div style="display:flex;align-items:flex-start;margin-bottom:5px;">
         <span style="color:${ACCENT};margin-right:8px;font-size:9px;flex-shrink:0;">—</span>
-        <span style="font-family:${BODY};font-size:8px;color:#555;">${cap}</span>
+        <span style="font-family:${BODY};font-size:8px;color:#A0AEC0;">${cap}</span>
       </div>`).join('')}
     </div>
 
@@ -192,7 +192,7 @@ function aboutPage(num) {
         ${[['44','Product Lines'],['4','Divisions'],['500kW','to 100MWh+'],['Global','Fulfillment']].map(([n,l]) => `
         <div style="background:${CARD_BG};border:1px solid #111d30;padding:12px 14px;border-left:3px solid ${ACCENT};">
           <div style="font-family:${SANS};font-weight:900;font-size:28px;color:#fff;line-height:1;letter-spacing:-0.02em;">${n}</div>
-          <div style="font-family:${MONO};font-size:6.5px;color:#3a3a50;letter-spacing:0.1em;text-transform:uppercase;margin-top:4px;">${l}</div>
+          <div style="font-family:${MONO};font-size:6.5px;color:#888;letter-spacing:0.1em;text-transform:uppercase;margin-top:4px;">${l}</div>
         </div>`).join('')}
       </div>
 
@@ -201,8 +201,8 @@ function aboutPage(num) {
       <div style="display:flex;align-items:flex-start;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #0c1420;">
         <div style="width:3px;height:34px;background:${d.accentFrom};margin-right:12px;flex-shrink:0;margin-top:1px;"></div>
         <div>
-          <div style="font-family:${SANS};font-weight:700;font-size:11px;color:#dde0e8;letter-spacing:0.04em;text-transform:uppercase;">${d.name}</div>
-          <div style="font-family:${BODY};font-size:7px;color:#3a3a50;margin-top:2px;">${d.products.length} products &nbsp;·&nbsp; ${d.tagline}</div>
+          <div style="font-family:${SANS};font-weight:700;font-size:11px;color:#FFFFFF;letter-spacing:0.04em;text-transform:uppercase;">${d.name}</div>
+          <div style="font-family:${BODY};font-size:7px;color:#888;margin-top:2px;">${d.products.length} products &nbsp;·&nbsp; ${d.tagline}</div>
         </div>
       </div>`).join('')}
     </div>
@@ -220,20 +220,20 @@ function tocPage(entries, num) {
 
   <div style="position:absolute;top:26px;left:42px;right:42px;bottom:22px;padding-top:10px;">
     <div style="font-family:${MONO};font-size:7px;color:${ACCENT};letter-spacing:0.22em;text-transform:uppercase;margin-bottom:6px;">CONTENTS</div>
-    <div style="font-family:${SANS};font-weight:900;font-size:30px;color:#fff;text-transform:uppercase;line-height:1;margin-bottom:18px;">TABLE OF <span style="color:${ACCENT};">CONTENTS</span></div>
+    <div style="font-family:${SANS};font-weight:900;font-size:36px;color:#fff;text-transform:uppercase;line-height:1;margin-bottom:18px;">TABLE OF <span style="color:${ACCENT};">CONTENTS</span></div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 36px;">
       ${entries.map(e => {
         if (e.type === 'division') return `
         <div style="grid-column:1/-1;display:flex;align-items:center;padding:7px 0;margin-top:4px;border-bottom:1px solid ${e.accent}22;">
           <div style="width:4px;height:4px;background:${e.accent};margin-right:10px;flex-shrink:0;"></div>
-          <span style="font-family:${SANS};font-weight:700;font-size:11.5px;color:#e0e0e8;letter-spacing:0.04em;text-transform:uppercase;flex:1;">${e.label}</span>
-          <span style="font-family:${MONO};font-size:7.5px;color:#333;">${e.pg}</span>
+          <span style="font-family:${SANS};font-weight:700;font-size:14px;color:#FFFFFF;letter-spacing:0.04em;text-transform:uppercase;flex:1;">${e.label}</span>
+          <span style="font-family:${MONO};font-size:9px;color:#888;">${e.pg}</span>
         </div>`;
         return `
         <div style="display:flex;align-items:center;padding:3px 0 3px 14px;">
-          <span style="font-family:${BODY};font-size:7.5px;color:#444;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:6px;">${e.label}</span>
-          <span style="font-family:${MONO};font-size:7px;color:#2a2a3a;flex-shrink:0;">${e.pg}</span>
+          <span style="font-family:${BODY};font-size:9px;color:#A0AEC0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:6px;">${e.label}</span>
+          <span style="font-family:${MONO};font-size:8.5px;color:#888;flex-shrink:0;">${e.pg}</span>
         </div>`;
       }).join('')}
     </div>
@@ -261,13 +261,13 @@ function divisionPage(div, num) {
       <div style="font-family:${MONO};font-size:8px;color:${a};letter-spacing:0.25em;text-transform:uppercase;margin-bottom:16px;">DIVISION 0${div.id} &nbsp;·&nbsp; ${div.products.length} PRODUCTS</div>
       <div style="font-family:${SANS};font-weight:900;font-size:58px;color:#fff;text-transform:uppercase;line-height:0.92;letter-spacing:-0.01em;margin-bottom:18px;">${nameLines.join('<br>')}</div>
       <div style="width:44px;height:3px;background:${a};margin-bottom:18px;"></div>
-      <div style="font-family:${BODY};font-size:10px;color:#555;line-height:1.75;max-width:440px;">${div.description}</div>
+      <div style="font-family:${BODY};font-size:10px;color:#A0AEC0;line-height:1.75;max-width:440px;">${div.description}</div>
       <div style="margin-top:22px;font-family:${SANS};font-weight:700;font-size:13px;color:${a};letter-spacing:0.1em;text-transform:uppercase;">${div.tagline}</div>
     </div>
   </div>
 
-  <div style="position:absolute;bottom:14px;right:24px;font-family:${MONO};font-size:7px;color:#1e2435;">${num}</div>
-  <div style="position:absolute;bottom:14px;left:60px;font-family:${MONO};font-size:6.5px;color:#1e2435;letter-spacing:0.12em;text-transform:uppercase;">DURBOLT POWER — ${div.name.toUpperCase()}</div>
+  <div style="position:absolute;bottom:14px;right:24px;font-family:${MONO};font-size:7px;color:#666;">${num}</div>
+  <div style="position:absolute;bottom:14px;left:60px;font-family:${MONO};font-size:6.5px;color:#666;letter-spacing:0.12em;text-transform:uppercase;">DURBOLT POWER — ${div.name.toUpperCase()}</div>
 </div>`;
 }
 
@@ -296,7 +296,7 @@ function heroPage(product, div, images, num) {
     <div style="font-family:${MONO};font-size:7px;color:${a};letter-spacing:0.2em;text-transform:uppercase;margin-bottom:10px;">${div.name.toUpperCase()}</div>
     <div style="font-family:${SANS};font-weight:900;font-size:26px;color:#fff;text-transform:uppercase;line-height:1.0;letter-spacing:0.01em;margin-bottom:6px;">${product.name}</div>
     ${product.sku ? `<div style="display:inline-flex;align-items:center;gap:5px;margin-bottom:9px;padding:3px 8px;background:rgba(232,99,26,0.08);border:1px solid rgba(232,99,26,0.22);">
-      <span style="font-family:${MONO};font-size:5.5px;color:#555;letter-spacing:0.2em;text-transform:uppercase;">PART NO.</span>
+      <span style="font-family:${MONO};font-size:5.5px;color:#A0AEC0;letter-spacing:0.2em;text-transform:uppercase;">PART NO.</span>
       <span style="font-family:${MONO};font-size:7.5px;font-weight:700;color:${a};letter-spacing:0.12em;">${product.sku}</span>
     </div>` : ''}
     <div style="font-family:${MONO};font-size:7.5px;color:#E8631A;line-height:1.55;margin-bottom:13px;padding-bottom:11px;border-bottom:1px solid #111d30;">${product.spec}</div>
@@ -407,7 +407,7 @@ function smallPage(products, div, images, num) {
   return `<div class="page" style="background:${DARK_BG};">
   ${topRule(a)}
   ${pageMeta(`DIV 0${div.id} · ${div.name.toUpperCase()}`, num)}
-  <div style="position:absolute;top:24px;left:24px;right:24px;font-family:${MONO};font-size:6.5px;color:#1e2435;letter-spacing:0.18em;text-transform:uppercase;">
+  <div style="position:absolute;top:24px;left:24px;right:24px;font-family:${MONO};font-size:6.5px;color:#A0AEC0;letter-spacing:0.18em;text-transform:uppercase;">
     ${div.name.toUpperCase()} — ACCESSORIES &amp; COMPONENTS
   </div>
   <div style="position:absolute;top:40px;left:22px;right:22px;bottom:22px;display:flex;gap:10px;">
@@ -427,16 +427,16 @@ function backCoverPage() {
 
   <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
     <div style="margin-bottom:18px;">${logoHTML(34)}</div>
-    <div style="font-family:${SANS};font-weight:300;font-size:12px;color:#444;letter-spacing:0.32em;text-transform:uppercase;margin-bottom:26px;">CRITICAL POWER INFRASTRUCTURE</div>
+    <div style="font-family:${SANS};font-weight:300;font-size:12px;color:#888;letter-spacing:0.32em;text-transform:uppercase;margin-bottom:26px;">CRITICAL POWER INFRASTRUCTURE</div>
     <div style="width:44px;height:2px;background:${ACCENT};margin-bottom:26px;"></div>
     <div style="display:flex;gap:52px;margin-bottom:26px;">
       ${[['WEBSITE','durbolt.com'],['EMAIL','info@durbolt.com'],['COVERAGE','USA · UAE · KSA · EG']].map(([l,v]) => `
       <div>
         <div style="font-family:${MONO};font-size:6.5px;color:${ACCENT};letter-spacing:0.2em;text-transform:uppercase;margin-bottom:6px;">${l}</div>
-        <div style="font-family:${BODY};font-size:9px;color:#777;">${v}</div>
+        <div style="font-family:${BODY};font-size:9px;color:#A0AEC0;">${v}</div>
       </div>`).join('')}
     </div>
-    <div style="font-family:${MONO};font-size:6.5px;color:#1e2435;letter-spacing:0.1em;">© 2025 DURBOLT POWER &nbsp;·&nbsp; ALL RIGHTS RESERVED &nbsp;·&nbsp; B2B SUPPLIER — FACTORY-DIRECT PRICING</div>
+    <div style="font-family:${MONO};font-size:6.5px;color:#666;letter-spacing:0.1em;">© 2025 DURBOLT POWER &nbsp;·&nbsp; ALL RIGHTS RESERVED &nbsp;·&nbsp; B2B SUPPLIER — FACTORY-DIRECT PRICING</div>
   </div>
 </div>`;
 }
@@ -507,27 +507,29 @@ async function main() {
   const pgCount = finalPages.length;
   const viewerToolbar = `<div class="viewer-toolbar">
   <div class="viewer-logo"><span style="color:#fff">— DURBOLT </span><span style="color:#E8631A">POWER</span><span style="color:#fff"> —</span></div>
-  <div class="viewer-meta">${pgCount} PAGES &nbsp;·&nbsp; 44 PRODUCTS &nbsp;·&nbsp; 2025 PRODUCT CATALOGUE</div>
+  <div class="viewer-meta">${pgCount} PGS&nbsp;·&nbsp;44 PRODUCTS</div>
   <a class="viewer-dl" href="durbolt-power-catalogue-2025.pdf">↓ DOWNLOAD PDF</a>
 </div>`;
   const viewerJs = `<script>
 (function(){
-  var PW=1122,PH=794;
+  var PW=1122, PH=794;
   function scale(){
-    var vw=document.documentElement.clientWidth;
-    var s=Math.min(1,(vw-32)/PW);
-    var vH=Math.round(PH*s),vW=Math.round(PW*s);
-    var ml=Math.max(0,Math.round((vw-vW)/2));
-    var mb=vH-PH+24;
+    var vw = Math.min(document.documentElement.clientWidth, window.innerWidth);
+    var s = Math.max(0.25, (vw - 16) / PW);
+    if(s > 1) s = 1;
+    var scaledH = Math.round(PH * s);
+    var mb = scaledH - PH + 20;
     document.querySelectorAll('.viewer-pages .page').forEach(function(p){
-      p.style.transform='scale('+s+')';
-      p.style.transformOrigin='top left';
-      p.style.marginLeft=ml+'px';
-      p.style.marginBottom=mb+'px';
+      p.style.transform = 'scale(' + s + ')';
+      p.style.transformOrigin = 'top center';
+      p.style.marginBottom = mb + 'px';
+      p.style.marginTop = '0';
     });
   }
-  window.addEventListener('resize',scale);
-  scale();
+  window.addEventListener('resize', scale);
+  document.addEventListener('DOMContentLoaded', scale);
+  setTimeout(scale, 100);
+  setTimeout(scale, 600);
 })();
 </script>`;
   const html = `<!DOCTYPE html>
