@@ -28,11 +28,11 @@ const PLACEHOLDER = `data:image/svg+xml;base64,${Buffer.from(
 ).toString('base64')}`;
 
 const D_MARK_URL = 'https://i.ibb.co/Q7f5CDdT/D2-F79-BA4-D0-F2-42-F5-9-F8-B-9-C0-ACB270-BC3.png';
-let D_MARK_B64 = null;
+let D_MARK_PATH = null;
 
 // ── Image fetching ───────────────────────────────────────────────────────────
 
-async function fetchBase64(url) {
+async function fetchAndSave(url, filename) {
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
@@ -41,7 +41,10 @@ async function fetchBase64(url) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
     const ct  = (res.headers.get('content-type') || 'image/jpeg').split(';')[0];
-    return `data:${ct};base64,${buf.toString('base64')}`;
+    const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }[ct] || 'jpg';
+    const name = `${filename}.${ext}`;
+    fs.writeFileSync(path.join(OUT_DIR, 'img', name), buf);
+    return `img/${name}`;
   } catch (e) {
     console.warn(`  ⚠  ${url.slice(0, 70)}: ${e.message}`);
     return null;
@@ -49,17 +52,20 @@ async function fetchBase64(url) {
 }
 
 async function buildImageMap() {
+  fs.mkdirSync(path.join(OUT_DIR, 'img'), { recursive: true });
   const urls = [...new Set(DIVISIONS.flatMap(d => d.products.map(p => p.imageUrl).filter(Boolean)))];
   console.log('\nFetching D mark...');
-  D_MARK_B64 = await fetchBase64(D_MARK_URL);
-  if (D_MARK_B64) console.log('  D mark: OK');
+  D_MARK_PATH = await fetchAndSave(D_MARK_URL, 'dmark');
+  if (D_MARK_PATH) console.log('  D mark: OK');
   else console.warn('  D mark: FAILED — will omit from catalogue');
 
   console.log(`\nFetching ${urls.length} product images...`);
   const map = new Map();
   for (let i = 0; i < urls.length; i += 5) {
     const batch   = urls.slice(i, i + 5);
-    const results = await Promise.all(batch.map(fetchBase64));
+    const results = await Promise.all(
+      batch.map((u, j) => fetchAndSave(u, `product-${String(i + j + 1).padStart(3, '0')}`))
+    );
     batch.forEach((u, j) => {
       map.set(u, results[j] ?? PLACEHOLDER);
       console.log(`  [${i + j + 1}/${urls.length}] ${u.slice(0, 75)}`);
@@ -84,8 +90,8 @@ table{border-collapse:collapse;}
 .viewer-meta{font-family:"JetBrains Mono",monospace;font-size:7px;color:#6a6a7a;letter-spacing:0.14em;text-align:center;flex:1;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .viewer-dl{font-family:"JetBrains Mono",monospace;font-size:8px;font-weight:700;color:#E8631A;letter-spacing:0.1em;text-decoration:none;white-space:nowrap;border:1px solid rgba(232,99,26,0.4);padding:5px 10px;flex-shrink:0;}
 .viewer-dl:hover{background:rgba(232,99,26,0.1);}
-.viewer-pages{padding-top:68px;padding-bottom:48px;display:flex;flex-direction:column;align-items:flex-start!important;background:#050A12;overflow-x:hidden;}
-.viewer-pages .page{box-shadow:0 6px 32px rgba(0,0,0,0.65),0 0 0 1px rgba(232,99,26,0.07);touch-action:pan-y;flex-shrink:0;}
+.viewer-pages{overflow-x:hidden;background:#050A12;padding-top:68px;padding-bottom:48px;}
+.viewer-pages .page{display:block;margin:0 auto 16px auto;transform-origin:top center;box-shadow:0 6px 32px rgba(0,0,0,0.65),0 0 0 1px rgba(232,99,26,0.07);}
 @media print{.viewer-toolbar{display:none!important;}.viewer-pages{padding-top:0!important;}body,html{margin:0;padding:0;}.page{margin:0;}}
 `;
 
@@ -121,7 +127,7 @@ function coverPage() {
   <div style="position:absolute;top:0;right:0;width:46%;height:100%;background:linear-gradient(to left,${DARK_BG}CC,transparent);"></div>
 
   <div style="position:absolute;top:50%;left:42px;transform:translateY(-50%);">
-    ${D_MARK_B64 ? `<div style="margin-bottom:24px;"><img src="${D_MARK_B64}" alt="Durbolt D" style="height:90px;width:auto;display:block;" /></div>` : ''}
+    ${D_MARK_PATH ? `<div style="margin-bottom:24px;"><img src="${D_MARK_PATH}" alt="Durbolt D" style="height:90px;width:auto;display:block;" /></div>` : ''}
     <div style="margin-bottom:18px;">${logoHTML(30)}</div>
     <div style="font-family:${SANS};font-weight:900;font-size:78px;line-height:0.88;color:#fff;letter-spacing:-0.02em;text-transform:uppercase;margin-bottom:18px;">PRODUCT<br><span style="color:${ACCENT};">CATALOGUE</span></div>
     <div style="width:44px;height:3px;background:${ACCENT};margin-bottom:16px;"></div>
@@ -240,7 +246,7 @@ function divisionPage(div, num) {
   <div style="position:absolute;top:0;left:0;width:5px;height:100%;background:${a};"></div>
   <div style="position:absolute;bottom:-30px;right:-20px;font-family:${SANS};font-weight:900;font-size:260px;color:#fff;opacity:0.018;line-height:1;user-select:none;pointer-events:none;">${div.id}</div>
 
-  ${D_MARK_B64 ? `<div style="position:absolute;top:22px;left:60px;"><img src="${D_MARK_B64}" alt="Durbolt D" style="height:32px;width:auto;display:block;opacity:0.85;" /></div>` : ''}
+  ${D_MARK_PATH ? `<div style="position:absolute;top:22px;left:60px;"><img src="${D_MARK_PATH}" alt="Durbolt D" style="height:32px;width:auto;display:block;opacity:0.85;" /></div>` : ''}
   <div style="position:absolute;inset:0;display:flex;align-items:center;padding:0 60px 0 60px;">
     <div>
       <div style="font-family:${MONO};font-size:8px;color:${a};letter-spacing:0.25em;text-transform:uppercase;margin-bottom:16px;">DIVISION 0${div.id} &nbsp;·&nbsp; ${div.products.length} PRODUCTS</div>
@@ -271,7 +277,7 @@ function heroPage(product, div, images, num) {
   ${topRule(a)}
 
   <div style="position:absolute;top:0;left:0;width:54%;height:100%;overflow:hidden;">
-    <img src="${img}" style="width:100%;height:100%;object-fit:${fit};object-position:center;" alt="${product.name}" />
+    <img src="${img}" loading="lazy" style="width:100%;height:100%;object-fit:${fit};object-position:center;" alt="${product.name}" />
     <div style="position:absolute;inset:0;background:linear-gradient(to right,transparent 40%,#080F1A88 80%,#080F1A 100%);"></div>
   </div>
 
@@ -334,7 +340,7 @@ function backCoverPage() {
   <div style="position:absolute;inset:0;opacity:0.025;background:repeating-linear-gradient(0deg,transparent,transparent 22px,${ACCENT} 22px,${ACCENT} 23px),repeating-linear-gradient(90deg,transparent,transparent 22px,${ACCENT} 22px,${ACCENT} 23px);"></div>
 
   <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
-    ${D_MARK_B64 ? `<div style="margin-bottom:28px;"><img src="${D_MARK_B64}" alt="Durbolt D" style="height:72px;width:auto;display:block;" /></div>` : ''}
+    ${D_MARK_PATH ? `<div style="margin-bottom:28px;"><img src="${D_MARK_PATH}" alt="Durbolt D" style="height:72px;width:auto;display:block;" /></div>` : ''}
     <div style="margin-bottom:18px;">${logoHTML(34)}</div>
     <div style="font-family:${SANS};font-weight:300;font-size:12px;color:#888;letter-spacing:0.32em;text-transform:uppercase;margin-bottom:26px;">CRITICAL POWER INFRASTRUCTURE</div>
     <div style="width:44px;height:2px;background:${ACCENT};margin-bottom:26px;"></div>
@@ -406,49 +412,27 @@ async function main() {
 </div>`;
   const viewerJs = `<script>
 (function(){
-  var PW = 1122, PH = 794;
-  var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-
+  var PW = 1122;
   function scale(){
-    // On touch devices — do NOT scale, let browser handle zoom natively
-    if(isTouch) {
-      // Just add left margin so pages are centered, no transform
-      var vw = Math.min(document.documentElement.clientWidth, window.innerWidth);
-      var ml = Math.max(0, Math.floor((vw - PW) / 2));
-      document.querySelectorAll('.viewer-pages .page').forEach(function(p){
-        p.style.transform = 'none';
-        p.style.marginLeft = ml > 0 ? ml + 'px' : '8px';
-        p.style.marginBottom = '16px';
-        p.style.overflowX = 'auto';
-      });
-      document.querySelector('.viewer-pages').style.overflowX = 'auto';
-      return;
-    }
-    // Desktop only — apply scale
-    var vw = Math.min(document.documentElement.clientWidth, window.innerWidth);
-    var s = Math.min(1, (vw - 16) / PW);
-    if(s < 0.25) s = 0.25;
-    var scaledH = Math.round(PH * s);
-    var scaledW = Math.round(PW * s);
-    var ml = Math.max(0, Math.floor((vw - scaledW) / 2));
-    var mb = scaledH - PH + 16;
+    var vw = window.innerWidth || document.documentElement.clientWidth;
+    var s = Math.min(1, (vw - 8) / PW);
     document.querySelectorAll('.viewer-pages .page').forEach(function(p){
+      p.style.transformOrigin = 'top center';
       p.style.transform = 'scale(' + s + ')';
-      p.style.transformOrigin = 'top left';
-      p.style.marginLeft = ml + 'px';
-      p.style.marginBottom = mb + 'px';
+      p.style.marginBottom = Math.round((794 * s) - 794 + 16) + 'px';
+      p.style.marginLeft = 'auto';
+      p.style.marginRight = 'auto';
     });
   }
-  window.addEventListener('resize', scale);
-  setTimeout(scale, 0);
-  setTimeout(scale, 300);
+  scale();
+  window.addEventListener('resize', scale, { passive: true });
 })();
 </script>`;
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes"/>
+<meta name="viewport" content="width=device-width, initial-scale=0.5, maximum-scale=5, user-scalable=yes"/>
 <title>Durbolt Power — Product Catalogue 2025</title>
 <style>${css}</style>
 </head>
