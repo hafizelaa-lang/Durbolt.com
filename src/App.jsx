@@ -808,11 +808,14 @@ function Navbar() {
     >
       <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "14px" }}>
-          <span style={{ display: "block", width: "18px", height: "1.5px", background: "#E8631A", flexShrink: 0 }} />
-          <span style={{ fontFamily: HEADING, fontWeight: 900, fontSize: "1.15rem", letterSpacing: "0.12em", lineHeight: 1, color: "#FFFFFF", WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale", textRendering: "optimizeLegibility" }}>
-            DURBOLT <span style={{ color: "#E8631A" }}>POWER</span>
-          </span>
-          <span style={{ display: "block", width: "18px", height: "1.5px", background: "#E8631A", flexShrink: 0 }} />
+          <img src="/durbolt-d-mark.png" alt="Durbolt D" style={{ height: "26px", width: "auto", display: "block", flexShrink: 0 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{ display: "block", width: "18px", height: "1.5px", background: "#E8631A", flexShrink: 0 }} />
+            <span style={{ fontFamily: HEADING, fontWeight: 900, fontSize: "1.15rem", letterSpacing: "0.12em", lineHeight: 1, color: "#FFFFFF", WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale", textRendering: "optimizeLegibility" }}>
+              DURBOLT <span style={{ color: "#E8631A" }}>POWER</span>
+            </span>
+            <span style={{ display: "block", width: "18px", height: "1.5px", background: "#E8631A", flexShrink: 0 }} />
+          </div>
         </Link>
 
         <div className="hidden md:flex items-center gap-8">

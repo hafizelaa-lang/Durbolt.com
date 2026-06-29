@@ -27,6 +27,9 @@ const PLACEHOLDER = `data:image/svg+xml;base64,${Buffer.from(
   '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="100%" height="100%" fill="#0d1728"/><text x="50%" y="50%" fill="#1e2d45" font-size="16" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif">IMAGE</text></svg>'
 ).toString('base64')}`;
 
+const D_MARK_URL = 'https://i.ibb.co/Q7f5CDdT/D2-F79-BA4-D0-F2-42-F5-9-F8-B-9-C0-ACB270-BC3.png';
+let D_MARK_B64 = null;
+
 // ── Image fetching ───────────────────────────────────────────────────────────
 
 async function fetchBase64(url) {
@@ -47,6 +50,11 @@ async function fetchBase64(url) {
 
 async function buildImageMap() {
   const urls = [...new Set(DIVISIONS.flatMap(d => d.products.map(p => p.imageUrl).filter(Boolean)))];
+  console.log('\nFetching D mark...');
+  D_MARK_B64 = await fetchBase64(D_MARK_URL);
+  if (D_MARK_B64) console.log('  D mark: OK');
+  else console.warn('  D mark: FAILED — will omit from catalogue');
+
   console.log(`\nFetching ${urls.length} product images...`);
   const map = new Map();
   for (let i = 0; i < urls.length; i += 5) {
@@ -113,6 +121,7 @@ function coverPage() {
   <div style="position:absolute;top:0;right:0;width:46%;height:100%;background:linear-gradient(to left,${DARK_BG}CC,transparent);"></div>
 
   <div style="position:absolute;top:50%;left:42px;transform:translateY(-50%);">
+    ${D_MARK_B64 ? `<div style="margin-bottom:24px;"><img src="${D_MARK_B64}" alt="Durbolt D" style="height:90px;width:auto;display:block;" /></div>` : ''}
     <div style="margin-bottom:18px;">${logoHTML(30)}</div>
     <div style="font-family:${SANS};font-weight:900;font-size:78px;line-height:0.88;color:#fff;letter-spacing:-0.02em;text-transform:uppercase;margin-bottom:18px;">PRODUCT<br><span style="color:${ACCENT};">CATALOGUE</span></div>
     <div style="width:44px;height:3px;background:${ACCENT};margin-bottom:16px;"></div>
@@ -231,6 +240,7 @@ function divisionPage(div, num) {
   <div style="position:absolute;top:0;left:0;width:5px;height:100%;background:${a};"></div>
   <div style="position:absolute;bottom:-30px;right:-20px;font-family:${SANS};font-weight:900;font-size:260px;color:#fff;opacity:0.018;line-height:1;user-select:none;pointer-events:none;">${div.id}</div>
 
+  ${D_MARK_B64 ? `<div style="position:absolute;top:22px;left:60px;"><img src="${D_MARK_B64}" alt="Durbolt D" style="height:32px;width:auto;display:block;opacity:0.85;" /></div>` : ''}
   <div style="position:absolute;inset:0;display:flex;align-items:center;padding:0 60px 0 60px;">
     <div>
       <div style="font-family:${MONO};font-size:8px;color:${a};letter-spacing:0.25em;text-transform:uppercase;margin-bottom:16px;">DIVISION 0${div.id} &nbsp;·&nbsp; ${div.products.length} PRODUCTS</div>
@@ -324,6 +334,7 @@ function backCoverPage() {
   <div style="position:absolute;inset:0;opacity:0.025;background:repeating-linear-gradient(0deg,transparent,transparent 22px,${ACCENT} 22px,${ACCENT} 23px),repeating-linear-gradient(90deg,transparent,transparent 22px,${ACCENT} 22px,${ACCENT} 23px);"></div>
 
   <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+    ${D_MARK_B64 ? `<div style="margin-bottom:28px;"><img src="${D_MARK_B64}" alt="Durbolt D" style="height:72px;width:auto;display:block;" /></div>` : ''}
     <div style="margin-bottom:18px;">${logoHTML(34)}</div>
     <div style="font-family:${SANS};font-weight:300;font-size:12px;color:#888;letter-spacing:0.32em;text-transform:uppercase;margin-bottom:26px;">CRITICAL POWER INFRASTRUCTURE</div>
     <div style="width:44px;height:2px;background:${ACCENT};margin-bottom:26px;"></div>
