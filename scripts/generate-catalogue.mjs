@@ -407,28 +407,41 @@ async function main() {
   const viewerJs = `<script>
 (function(){
   var PW = 1122, PH = 794;
+  var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
   function scale(){
+    // On touch devices — do NOT scale, let browser handle zoom natively
+    if(isTouch) {
+      // Just add left margin so pages are centered, no transform
+      var vw = Math.min(document.documentElement.clientWidth, window.innerWidth);
+      var ml = Math.max(0, Math.floor((vw - PW) / 2));
+      document.querySelectorAll('.viewer-pages .page').forEach(function(p){
+        p.style.transform = 'none';
+        p.style.marginLeft = ml > 0 ? ml + 'px' : '8px';
+        p.style.marginBottom = '16px';
+        p.style.overflowX = 'auto';
+      });
+      document.querySelector('.viewer-pages').style.overflowX = 'auto';
+      return;
+    }
+    // Desktop only — apply scale
     var vw = Math.min(document.documentElement.clientWidth, window.innerWidth);
     var s = Math.min(1, (vw - 16) / PW);
     if(s < 0.25) s = 0.25;
     var scaledH = Math.round(PH * s);
     var scaledW = Math.round(PW * s);
     var ml = Math.max(0, Math.floor((vw - scaledW) / 2));
-    var gap = 16;
-    var mb = scaledH - PH + gap;
+    var mb = scaledH - PH + 16;
     document.querySelectorAll('.viewer-pages .page').forEach(function(p){
       p.style.transform = 'scale(' + s + ')';
       p.style.transformOrigin = 'top left';
       p.style.marginLeft = ml + 'px';
       p.style.marginBottom = mb + 'px';
-      p.style.display = 'block';
     });
-    document.querySelector('.viewer-pages').style.paddingBottom = '32px';
   }
   window.addEventListener('resize', scale);
   setTimeout(scale, 0);
   setTimeout(scale, 300);
-  setTimeout(scale, 800);
 })();
 </script>`;
   const html = `<!DOCTYPE html>
