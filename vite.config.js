@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
     outDir: "dist",
+    emptyOutDir: false,
   },
   server: {
     allowedHosts: true,    // allows cloudflared / ngrok tunnels in dev; has no effect on the production build

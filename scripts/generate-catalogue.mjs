@@ -90,12 +90,20 @@ function groupDivision(products) {
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-body{background:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+body{background:#050A12;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 .page{width:297mm;height:210mm;background:${DARK_BG};position:relative;overflow:hidden;page-break-after:always;break-after:page;}
 .page:last-child{page-break-after:avoid;break-after:avoid;}
 @page{size:297mm 210mm;margin:0;}
-@media print{body,html{margin:0;padding:0;}.page{margin:0;}}
 table{border-collapse:collapse;}
+/* ── Web Viewer ──────────────────────────────────────────────────────────── */
+.viewer-toolbar{position:fixed;top:0;left:0;right:0;height:52px;background:#080E18;border-bottom:2px solid #E8631A;display:flex;align-items:center;justify-content:space-between;padding:0 24px;z-index:9999;box-sizing:border-box;}
+.viewer-logo{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-weight:800;font-size:16px;letter-spacing:0.1em;color:#fff;white-space:nowrap;flex-shrink:0;}
+.viewer-meta{font-family:"JetBrains Mono",monospace;font-size:9px;color:#4a4a5a;letter-spacing:0.14em;text-align:center;flex:1;padding:0 16px;}
+.viewer-dl{font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;color:#E8631A;letter-spacing:0.1em;text-decoration:none;white-space:nowrap;border:1px solid rgba(232,99,26,0.4);padding:7px 16px;flex-shrink:0;}
+.viewer-dl:hover{background:rgba(232,99,26,0.1);}
+.viewer-pages{padding-top:68px;padding-bottom:48px;display:flex;flex-direction:column;align-items:flex-start;background:#050A12;}
+.viewer-pages .page{box-shadow:0 6px 32px rgba(0,0,0,0.65),0 0 0 1px rgba(232,99,26,0.07);}
+@media print{.viewer-toolbar{display:none!important;}.viewer-pages{padding-top:0!important;}body,html{margin:0;padding:0;}.page{margin:0;}}
 `;
 
 function logoHTML(size = 26) {
@@ -496,15 +504,46 @@ async function main() {
   const finalPages = pages.map(p => (p === TOC_MARKER ? toc : p));
 
   // Write HTML
+  const pgCount = finalPages.length;
+  const viewerToolbar = `<div class="viewer-toolbar">
+  <div class="viewer-logo"><span style="color:#fff">— DURBOLT </span><span style="color:#E8631A">POWER</span><span style="color:#fff"> —</span></div>
+  <div class="viewer-meta">${pgCount} PAGES &nbsp;·&nbsp; 44 PRODUCTS &nbsp;·&nbsp; 2025 PRODUCT CATALOGUE</div>
+  <a class="viewer-dl" href="durbolt-power-catalogue-2025.pdf">↓ DOWNLOAD PDF</a>
+</div>`;
+  const viewerJs = `<script>
+(function(){
+  var PW=1122,PH=794;
+  function scale(){
+    var vw=document.documentElement.clientWidth;
+    var s=Math.min(1,(vw-32)/PW);
+    var vH=Math.round(PH*s),vW=Math.round(PW*s);
+    var ml=Math.max(0,Math.round((vw-vW)/2));
+    var mb=vH-PH+24;
+    document.querySelectorAll('.viewer-pages .page').forEach(function(p){
+      p.style.transform='scale('+s+')';
+      p.style.transformOrigin='top left';
+      p.style.marginLeft=ml+'px';
+      p.style.marginBottom=mb+'px';
+    });
+  }
+  window.addEventListener('resize',scale);
+  scale();
+})();
+</script>`;
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Durbolt Power — Product Catalogue 2025</title>
 <style>${css}</style>
 </head>
 <body>
+${viewerToolbar}
+<div class="viewer-pages">
 ${finalPages.join('\n')}
+</div>
+${viewerJs}
 </body>
 </html>`;
 
