@@ -790,7 +790,7 @@ function Navbar() {
     { label: "Products", href: "#products" },
     { label: "Solutions", href: "/solutions", isRoute: true },
     { label: "Resources", href: "/blog", isRoute: true },
-    { label: "Catalogue", href: "/catalogue/", isRoute: true },
+    { label: "Catalogue", href: "/catalogue/", isRoute: false },
     { label: "How It Works", href: "#how-it-works" },
     { label: "Contact", href: "#rfq" },
   ];
