@@ -161,7 +161,7 @@ const recipients = [
     companyName: "Vantage Data Centers",
     subject: "Critical Power Infrastructure — Durbolt Power",
     intro1: "Durbolt Power supplies critical power infrastructure to hyperscale data center operators, EPC contractors, and industrial facilities across North America and the Middle East. We understand that facilities at the scale of Vantage Data Centers demand uncompromising reliability in every layer of the power stack.",
-    intro2: "Our product range covers the full data center power chain &#8212; N+1 and 2N industrial UPS systems, standby and prime-rated diesel generators, precision cooling, medium-voltage switchgear, transformers, and grid-scale BESS &#8212; supplied factory-direct with DDP fulfillment and private-label capability.",
+    intro2: "Our product range covers the full data center power chain &#8212; N+1 and 2N industrial UPS systems, standby and prime-rated diesel generators, precision cooling, medium-voltage switchgear, transformers, and grid-scale BESS &#8212; supplied factory-direct with DDP fulfillment and full project documentation.",
     closingLine: "If your team is evaluating vendors for upcoming capacity expansions or redundancy upgrades, we would be glad to provide specifications and pricing.",
   },
   // Add additional recipients here following the same structure
