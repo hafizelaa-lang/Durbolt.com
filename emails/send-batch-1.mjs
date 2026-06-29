@@ -4,7 +4,7 @@
  * BCC: sales@durbolt.com on every send
  */
 
-import { readFileSync } from "fs";
+import { readFileSync, appendFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -339,6 +339,15 @@ async function sendEmail({ to, contactName, companyName, subject, intro1, intro2
   return { ok: r.ok, status: r.status, id: body.id, error: body.message };
 }
 
+// ─── Logging ──────────────────────────────────────────────────────────────────
+
+const LOG_FILE = join(__dirname, "batch-1.log");
+
+function log(line) {
+  console.log(line);
+  appendFileSync(LOG_FILE, line + "\n", "utf8");
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 function ts() {
@@ -346,37 +355,40 @@ function ts() {
 }
 
 async function main() {
-  const total = recipients.length;
-  console.log(`Batch 1 — ${total} recipients — LIVE MODE`);
+  // Skip index 0 (Vantage Data Centers — already sent 2026-06-29)
+  const queue = recipients.slice(1);
+  const total = recipients.length; // keep original numbering (2/17 … 17/17)
+
+  log(`[${ts()}] Batch 1 — resuming from #2 — ${queue.length} remaining — LIVE MODE`);
 
   let sent = 0, failed = 0;
 
-  for (let i = 0; i < recipients.length; i++) {
-    const r = recipients[i];
-    const num = i + 1;
+  for (let i = 0; i < queue.length; i++) {
+    const r   = queue[i];
+    const num = i + 2; // display number: 2, 3, … 17
 
     try {
       const result = await sendEmail(r);
       if (result.ok) {
-        console.log(`[${ts()}] Sent ${num}/${total}: ${r.companyName} → ${r.to} | ID: ${result.id}`);
+        log(`[${ts()}] Sent ${num}/${total}: ${r.companyName} → ${r.to} | ID: ${result.id}`);
         sent++;
       } else {
-        console.error(`[${ts()}] FAILED ${num}/${total}: ${r.companyName} → ${r.to} | ${result.status} ${result.error}`);
+        log(`[${ts()}] FAILED ${num}/${total}: ${r.companyName} → ${r.to} | ${result.status} ${result.error}`);
         failed++;
       }
     } catch (e) {
-      console.error(`[${ts()}] FAILED ${num}/${total}: ${r.companyName} → ${r.to} | Exception: ${e.message}`);
+      log(`[${ts()}] FAILED ${num}/${total}: ${r.companyName} → ${r.to} | Exception: ${e.message}`);
       failed++;
     }
 
-    if (i < recipients.length - 1) {
+    if (i < queue.length - 1) {
       const nextTime = new Date(Date.now() + DELAY_MS).toTimeString().slice(0, 8);
-      console.log(`Next send in 20 minutes — ${nextTime}`);
+      log(`Next send in 20 minutes — ${nextTime}`);
       await new Promise(res => setTimeout(res, DELAY_MS));
     }
   }
 
-  console.log(`\nDone: ${sent} sent, ${failed} failed`);
+  log(`\n[${ts()}] Done: ${sent} sent, ${failed} failed`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
