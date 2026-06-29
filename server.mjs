@@ -464,6 +464,7 @@ async function handleRFQ(req, res) {
       const payload = {
         from: "Durbolt Power <contact@durbolt.com>",
         to: ["sales@durbolt.com"],
+        bcc: ["sales@durbolt.com"],
         reply_to: email,
         subject: `New Inquiry from ${name} — Durbolt.com`,
         html,

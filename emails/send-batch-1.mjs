@@ -1,0 +1,233 @@
+#!/usr/bin/env node
+/**
+ * Batch outreach sender — Batch 1
+ * BCC: sales@durbolt.com on every send
+ */
+
+import { readFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(__dirname, "..");
+
+// Load env
+for (const line of readFileSync(join(ROOT, ".env"), "utf8").split("\n")) {
+  const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.+)$/);
+  if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
+}
+
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+if (!RESEND_API_KEY) { console.error("RESEND_API_KEY not set"); process.exit(1); }
+
+const BCC = ["sales@durbolt.com"];
+const FROM = "sales@durbolt.com";
+const DELAY_MS = 2000;
+
+// ─── Personalised HTML builder ───────────────────────────────────────────────
+
+function buildHtml({ companyName, contactName, intro1, intro2, closingLine }) {
+  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <title>Durbolt Power — Critical Power Infrastructure</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f4f4f4;margin:0;padding:0;">
+    <tr>
+      <td align="center" style="padding:24px 0;">
+
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #e8e8e8;">
+
+          <!-- HEADER -->
+          <tr>
+            <td align="center" style="background-color:#080F1A;padding:60px 48px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td align="center" style="padding-bottom:16px;">
+                    <img
+                      src="https://i.ibb.co/Q7f5CDdT/D2-F79-BA4-D0-F2-42-F5-9-F8-B-9-C0-ACB270-BC3.png"
+                      alt="Durbolt D"
+                      height="52"
+                      width="auto"
+                      style="display:block;height:52px;width:auto;border:0;outline:none;text-decoration:none;"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-bottom:20px;">
+                    <span style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:18px;font-weight:700;letter-spacing:0.14em;color:#E8631A;white-space:nowrap;">&#8212;</span><span style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:18px;font-weight:700;letter-spacing:0.14em;color:#ffffff;white-space:nowrap;"> DURBOLT </span><span style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:18px;font-weight:700;letter-spacing:0.14em;color:#E8631A;">POWER &#8212;</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td style="background-color:#ffffff;padding:40px 48px;">
+
+              <p style="margin:0 0 24px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#E8631A;line-height:1;">CRITICAL POWER INFRASTRUCTURE</p>
+
+              <p style="margin:0 0 28px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;color:#2a2a2a;line-height:1.8;">${intro1}</p>
+
+              <!-- Stats row -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 28px 0;border-top:1px solid #f0f0f0;border-bottom:1px solid #f0f0f0;">
+                <tr>
+                  <td align="center" style="padding:32px 8px;width:33.33%;">
+                    <p style="margin:0 0 6px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:22px;font-weight:700;color:#080F1A;line-height:1;">20+</p>
+                    <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:#999999;line-height:1;">YEARS</p>
+                  </td>
+                  <td align="center" style="padding:32px 8px;width:33.33%;border-left:1px solid #f0f0f0;border-right:1px solid #f0f0f0;">
+                    <p style="margin:0 0 6px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:22px;font-weight:700;color:#080F1A;line-height:1;">500+</p>
+                    <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:#999999;line-height:1;">PROJECTS</p>
+                  </td>
+                  <td align="center" style="padding:32px 8px;width:33.33%;">
+                    <p style="margin:0 0 6px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:22px;font-weight:700;color:#080F1A;line-height:1;">50+</p>
+                    <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:#999999;line-height:1;">COUNTRIES</p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 28px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;color:#2a2a2a;line-height:1.8;">${intro2}</p>
+
+              <p style="margin:0 0 32px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;color:#2a2a2a;line-height:1.8;">We are selectively expanding our network of procurement partners and project clients across key markets. If your organization sources, specifies, or deploys power infrastructure at scale, we would welcome the conversation.</p>
+
+              <!-- Catalogue block -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:85%;margin:0 auto 32px auto;background-color:#080F1A;border-left:3px solid #E8631A;">
+                <tr>
+                  <td style="padding:20px;border-radius:2px;">
+                    <p style="margin:0 0 8px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:#E8631A;line-height:1;">2025 PRODUCT CATALOGUE</p>
+                    <p style="margin:0 0 18px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;color:#888888;line-height:1.7;">44 product lines across 4 divisions &#8212; generators, switchgear, BESS, cooling, transformers, UPS and more.</p>
+                    <p style="margin:0;">
+                      <a href="https://durbolt.com/catalogue/durbolt-power-catalogue-2025.pdf" style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:700;letter-spacing:0.08em;color:#E8631A;text-decoration:none;">&#8594; Download Catalogue</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 32px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;color:#2a2a2a;line-height:1.8;">${closingLine}</p>
+
+              <!-- Sign-off -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:32px;">
+                <tr>
+                  <td>
+                    <p style="margin:0 0 6px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;font-weight:600;color:#1a1a1a;line-height:1.5;">Durbolt Power &#8212; Procurement &amp; Supply Chain</p>
+                    <p style="margin:0 0 6px 0;">
+                      <a href="mailto:sales@durbolt.com" style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;color:#E8631A;text-decoration:none;">sales@durbolt.com</a>
+                    </p>
+                    <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#888888;line-height:1.5;">durbolt.com &nbsp;&#183;&nbsp; +1 (609) 369-0422</p>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- DIVIDER -->
+          <tr>
+            <td style="height:1px;background-color:#f0f0f0;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td align="center" style="background-color:#080F1A;padding:32px 48px;">
+              <p style="margin:0 0 6px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#ffffff;line-height:1;">DURBOLT POWER</p>
+              <p style="margin:0 0 16px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;color:#555555;line-height:1;">Critical Power Infrastructure &nbsp;&#183;&nbsp; durbolt.com</p>
+              <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:9px;color:#333333;line-height:1.6;">&#169; 2025 Durbolt Power. This message was sent to this address. To unsubscribe reply with REMOVE.</p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>`;
+}
+
+// ─── Recipients ──────────────────────────────────────────────────────────────
+
+const recipients = [
+  {
+    to: "procurement@vantagedatacenters.com",
+    contactName: "Procurement Team",
+    companyName: "Vantage Data Centers",
+    subject: "Critical Power Infrastructure — Durbolt Power",
+    intro1: "Durbolt Power supplies critical power infrastructure to hyperscale data center operators, EPC contractors, and industrial facilities across North America and the Middle East. We understand that facilities at the scale of Vantage Data Centers demand uncompromising reliability in every layer of the power stack.",
+    intro2: "Our product range covers the full data center power chain &#8212; N+1 and 2N industrial UPS systems, standby and prime-rated diesel generators, precision cooling, medium-voltage switchgear, transformers, and grid-scale BESS &#8212; supplied factory-direct with DDP fulfillment and private-label capability.",
+    closingLine: "If your team is evaluating vendors for upcoming capacity expansions or redundancy upgrades, we would be glad to provide specifications and pricing.",
+  },
+  // Add additional recipients here following the same structure
+];
+
+// ─── Send function ────────────────────────────────────────────────────────────
+
+async function sendEmail({ to, contactName, companyName, subject, intro1, intro2, closingLine }) {
+  const html = buildHtml({ companyName, contactName, intro1, intro2, closingLine });
+  const payload = {
+    from: FROM,
+    to: [to],
+    bcc: BCC,
+    subject,
+    html,
+  };
+
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const body = await r.json();
+  return { ok: r.ok, status: r.status, id: body.id, error: body.message };
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+async function main() {
+  const args = process.argv.slice(2);
+  const dryRun = args.includes("--dry-run");
+  const testTo = args.find(a => a.startsWith("--test="))?.slice(7);
+
+  console.log(`Batch 1 — ${recipients.length} recipient(s)${dryRun ? " [DRY RUN]" : ""}${testTo ? ` [TEST → ${testTo}]` : ""}`);
+
+  let sent = 0, failed = 0;
+
+  for (const r of recipients) {
+    const target = testTo ? { ...r, to: testTo, subject: r.subject + " [BATCH TEST - " + r.companyName + "]" } : r;
+    if (dryRun) {
+      console.log(`  [DRY RUN] Would send to: ${target.to} | ${target.subject}`);
+      continue;
+    }
+    try {
+      const result = await sendEmail(target);
+      if (result.ok) {
+        console.log(`  ✓ ${target.to} | ${target.companyName} | id=${result.id}`);
+        sent++;
+      } else {
+        console.error(`  ✗ ${target.to} | ${target.companyName} | ${result.status} ${result.error}`);
+        failed++;
+      }
+    } catch (e) {
+      console.error(`  ✗ ${target.to} | ${target.companyName} | Exception: ${e.message}`);
+      failed++;
+    }
+    if (recipients.indexOf(r) < recipients.length - 1) {
+      await new Promise(res => setTimeout(res, DELAY_MS));
+    }
+  }
+
+  console.log(`\nDone: ${sent} sent, ${failed} failed`);
+}
+
+main().catch(e => { console.error(e); process.exit(1); });
