@@ -60,31 +60,6 @@ async function buildImageMap() {
   return map;
 }
 
-// ── Product tier assignment ──────────────────────────────────────────────────
-
-function assignTier(product, idx) {
-  if (idx === 0) return 'hero';
-  const n = product.name.toLowerCase();
-  const s = product.spec.toLowerCase();
-  if (s.includes('mwh') || s.includes('mva') ||
-      n.includes('grid-scale') || n.includes('containerized') || n.includes('data center'))
-    return 'hero';
-  if (n.includes('cable') || n.includes('conduit') || n.includes('grounding') ||
-      n.includes('busbar') || n.includes('surge') || n.includes('exhaust') ||
-      n.includes('enclosure') || n.includes('fuel storage'))
-    return 'small';
-  return 'mid';
-}
-
-function groupDivision(products) {
-  const hero = [], mid = [], small = [];
-  products.forEach((p, i) => {
-    const t = assignTier(p, i);
-    (t === 'hero' ? hero : t === 'mid' ? mid : small).push(p);
-  });
-  return { hero, mid, small };
-}
-
 // ── HTML helpers ─────────────────────────────────────────────────────────────
 
 const css = `
@@ -101,8 +76,8 @@ table{border-collapse:collapse;}
 .viewer-meta{font-family:"JetBrains Mono",monospace;font-size:7px;color:#6a6a7a;letter-spacing:0.14em;text-align:center;flex:1;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .viewer-dl{font-family:"JetBrains Mono",monospace;font-size:8px;font-weight:700;color:#E8631A;letter-spacing:0.1em;text-decoration:none;white-space:nowrap;border:1px solid rgba(232,99,26,0.4);padding:5px 10px;flex-shrink:0;}
 .viewer-dl:hover{background:rgba(232,99,26,0.1);}
-.viewer-pages{padding-top:68px;padding-bottom:48px;display:flex;flex-direction:column;align-items:center;background:#050A12;overflow-x:hidden;}
-.viewer-pages .page{box-shadow:0 6px 32px rgba(0,0,0,0.65),0 0 0 1px rgba(232,99,26,0.07);touch-action:pan-y;}
+.viewer-pages{padding-top:68px;padding-bottom:48px;display:flex;flex-direction:column;align-items:flex-start!important;background:#050A12;overflow-x:hidden;}
+.viewer-pages .page{box-shadow:0 6px 32px rgba(0,0,0,0.65),0 0 0 1px rgba(232,99,26,0.07);touch-action:pan-y;flex-shrink:0;}
 @media print{.viewer-toolbar{display:none!important;}.viewer-pages{padding-top:0!important;}body,html{margin:0;padding:0;}.page{margin:0;}}
 `;
 
@@ -271,149 +246,72 @@ function divisionPage(div, num) {
 </div>`;
 }
 
-// ── Hero product page (1 per page) ───────────────────────────────────────────
+// ── Hero product page (1 per page, all 44 products) ─────────────────────────
 
 function heroPage(product, div, images, num) {
-  const a    = div.accentFrom;
-  const img  = images.get(product.imageUrl) || PLACEHOLDER;
-  const fit  = product.contain ? 'contain' : 'cover';
-  const spec = PRODUCT_SPECS[product.name];
-  const cats = spec ? spec.categories.slice(0, 2) : [];
-  const certs = spec ? spec.certifications.slice(0, 4) : [];
-  const apps  = spec ? spec.applications.slice(0, 3) : [];
+  const a     = div.accentFrom;
+  const img   = images.get(product.imageUrl) || PLACEHOLDER;
+  const fit   = product.contain ? 'contain' : 'cover';
+  const spec  = PRODUCT_SPECS[product.name];
+  const cats  = spec ? spec.categories.slice(0, 3) : [];
+  const certs = spec ? spec.certifications.slice(0, 6) : [];
+  const apps  = spec ? spec.applications.slice(0, 4) : [];
 
   return `<div class="page" style="background:${DARK_BG};">
   ${topRule(a)}
-  ${pageMeta(`DIV 0${div.id} · ${div.name.toUpperCase()}`, num)}
 
   <div style="position:absolute;top:0;left:0;width:54%;height:100%;overflow:hidden;">
     <img src="${img}" style="width:100%;height:100%;object-fit:${fit};object-position:center;" alt="${product.name}" />
-    <div style="position:absolute;inset:0;background:linear-gradient(to right,transparent 30%,${DARK_BG}ee 85%,${DARK_BG} 100%);"></div>
-    <div style="position:absolute;inset:0;background:linear-gradient(to top,${DARK_BG}cc 0%,transparent 40%);"></div>
+    <div style="position:absolute;inset:0;background:linear-gradient(to right,transparent 40%,#080F1A88 80%,#080F1A 100%);"></div>
   </div>
 
-  <div style="position:absolute;top:24px;left:54%;right:0;bottom:0;padding:18px 28px 22px 22px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;">
-    <div style="font-family:${MONO};font-size:7px;color:${a};letter-spacing:0.2em;text-transform:uppercase;margin-bottom:10px;">${div.name.toUpperCase()}</div>
-    <div style="font-family:${SANS};font-weight:900;font-size:26px;color:#fff;text-transform:uppercase;line-height:1.0;letter-spacing:0.01em;margin-bottom:6px;">${product.name}</div>
-    ${product.sku ? `<div style="display:inline-flex;align-items:center;gap:5px;margin-bottom:9px;padding:3px 8px;background:rgba(232,99,26,0.08);border:1px solid rgba(232,99,26,0.22);">
-      <span style="font-family:${MONO};font-size:5.5px;color:#A0AEC0;letter-spacing:0.2em;text-transform:uppercase;">PART NO.</span>
-      <span style="font-family:${MONO};font-size:7.5px;font-weight:700;color:${a};letter-spacing:0.12em;">${product.sku}</span>
-    </div>` : ''}
-    <div style="font-family:${MONO};font-size:7.5px;color:#E8631A;line-height:1.55;margin-bottom:13px;padding-bottom:11px;border-bottom:1px solid #111d30;">${product.spec}</div>
+  <div style="position:absolute;top:0;left:54%;right:0;bottom:0;background:#080F1A;display:flex;flex-direction:column;overflow:hidden;">
 
-    ${cats.map(cat => `
-    <div style="margin-bottom:10px;">
-      <div style="font-family:${MONO};font-size:6.5px;color:${a};letter-spacing:0.18em;text-transform:uppercase;margin-bottom:4px;">${cat.title}</div>
-      <table style="width:100%;">
-        ${cat.rows.slice(0, 4).map(([k, v]) => `
-        <tr style="border-bottom:1px solid #0c1528;">
-          <td style="font-family:${MONO};font-size:6.5px;color:#A0AEC0;padding:2.5px 0;width:44%;letter-spacing:0.04em;">${k}</td>
-          <td style="font-family:${MONO};font-size:6.5px;color:#E2E8F0;padding:2.5px 0;text-align:right;">${v}</td>
-        </tr>`).join('')}
-      </table>
-    </div>`).join('')}
-
-    ${certs.length ? `
-    <div style="margin-top:8px;">
-      <div style="font-family:${MONO};font-size:6.5px;color:#E8631A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px;">CERTIFICATIONS</div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;">
-        ${certs.map(c => `<span style="font-family:${MONO};font-size:6px;color:#CBD5E0;background:${a}11;border:1px solid rgba(255,255,255,0.15);padding:2px 6px;">${c}</span>`).join('')}
-      </div>
-    </div>` : ''}
-
-    ${apps.length ? `
-    <div style="margin-top:7px;">
-      <div style="font-family:${MONO};font-size:6.5px;color:#E8631A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;">APPLICATIONS</div>
-      <div style="font-family:${BODY};font-size:7px;color:#A0AEC0;line-height:1.5;">${apps.join(' · ')}</div>
-    </div>` : ''}
-  </div>
-
-  ${bottomBar('durbolt.com &nbsp;·&nbsp; Unit configuration, color, and finish may vary.', num)}
-</div>`;
-}
-
-// ── Mid-tier page (2 per page) ───────────────────────────────────────────────
-
-function midPanel(product, div, images, side) {
-  if (!product) return `<div style="flex:1;"></div>`;
-  const a   = div.accentFrom;
-  const img = images.get(product.imageUrl) || PLACEHOLDER;
-  const fit = product.contain ? 'contain' : 'cover';
-  const spec = PRODUCT_SPECS[product.name];
-  const cat  = spec ? spec.categories[0] : null;
-
-  return `<div style="flex:1;padding:20px;display:flex;flex-direction:column;border-right:${side === 'left' ? '1px solid #0c1528' : 'none'};">
-    <div style="height:105px;overflow:hidden;position:relative;margin-bottom:11px;flex-shrink:0;">
-      <img src="${img}" style="width:100%;height:100%;object-fit:${fit};object-position:center;" alt="${product.name}" />
-      <div style="position:absolute;inset:0;background:linear-gradient(to top,${DARK_BG}cc,transparent 50%);"></div>
-      <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:${a};"></div>
+    <div style="padding:16px 24px 0 22px;flex-shrink:0;">
+      <div style="font-family:${MONO};font-size:7px;color:${a};letter-spacing:0.2em;text-transform:uppercase;margin-bottom:9px;">DIV 0${div.id} · ${div.name.toUpperCase()}</div>
+      <div style="font-family:${SANS};font-weight:900;font-size:28px;color:#fff;text-transform:uppercase;line-height:1.0;letter-spacing:0.01em;margin-bottom:7px;">${product.name}</div>
+      ${product.sku ? `<div style="display:inline-flex;align-items:center;gap:6px;margin-bottom:8px;padding:3px 9px;border:1px solid rgba(232,99,26,0.3);">
+        <span style="font-family:${MONO};font-size:6px;color:#555;letter-spacing:0.18em;text-transform:uppercase;">PART NO.</span>
+        <span style="font-family:${MONO};font-size:7.5px;font-weight:700;color:${a};letter-spacing:0.12em;">${product.sku}</span>
+      </div>` : ''}
+      <div style="font-family:${MONO};font-size:8px;color:#E8631A;line-height:1.5;margin-top:${product.sku ? '0' : '0'};margin-bottom:8px;">${product.spec}</div>
+      <div style="border-bottom:1px solid rgba(232,99,26,0.3);margin-bottom:10px;"></div>
     </div>
-    <div style="font-family:${SANS};font-weight:800;font-size:15px;color:#e8eaf0;text-transform:uppercase;line-height:1.1;letter-spacing:0.02em;margin-bottom:3px;">${product.name}</div>
-    ${product.sku ? `<div style="font-family:${MONO};font-size:6px;color:${a};letter-spacing:0.12em;margin-bottom:5px;">${product.sku}</div>` : ''}
-    <div style="font-family:${MONO};font-size:6.5px;color:#AAB4C4;line-height:1.55;margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid #0c1528;">${product.spec}</div>
-    ${cat ? `
-    <div>
-      <div style="font-family:${MONO};font-size:6px;color:${a};letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px;">${cat.title}</div>
-      <table style="width:100%;">
-        ${cat.rows.slice(0, 4).map(([k, v]) => `
-        <tr>
-          <td style="font-family:${MONO};font-size:6px;color:#A0AEC0;padding:2px 0;width:44%;">${k}</td>
-          <td style="font-family:${MONO};font-size:6px;color:#AAB4C4;padding:2px 0;text-align:right;">${v}</td>
-        </tr>`).join('')}
-      </table>
-    </div>` : ''}
-  </div>`;
-}
 
-function midPage(products, div, images, num) {
-  const a = div.accentFrom;
-  return `<div class="page" style="background:${DARK_BG};">
-  ${topRule(a)}
-  ${pageMeta(`DIV 0${div.id} · ${div.name.toUpperCase()}`, num)}
-  <div style="position:absolute;top:22px;left:0;right:0;bottom:0;display:flex;">
-    ${midPanel(products[0], div, images, 'left')}
-    ${midPanel(products[1] ?? null, div, images, 'right')}
-  </div>
-  ${bottomBar('DURBOLT POWER — PRODUCT CATALOGUE 2025', num)}
-</div>`;
-}
+    <div style="flex:1;padding:0 24px 0 22px;overflow:hidden;display:flex;flex-direction:column;gap:8px;">
+      ${cats.map(cat => `
+      <div>
+        <div style="font-family:${MONO};font-size:6px;color:${a};letter-spacing:0.18em;text-transform:uppercase;margin-bottom:3px;">${cat.title}</div>
+        <table style="width:100%;">
+          ${cat.rows.slice(0, 4).map(([k, v]) => `
+          <tr style="border-bottom:1px solid #0c1528;">
+            <td style="font-family:${MONO};font-size:6.5px;color:#A0AEC0;padding:2.5px 0;width:44%;letter-spacing:0.03em;">${k}</td>
+            <td style="font-family:${MONO};font-size:6.5px;color:#E2E8F0;padding:2.5px 0;text-align:right;">${v}</td>
+          </tr>`).join('')}
+        </table>
+      </div>`).join('')}
 
-// ── Small accessories page (3 per page) ─────────────────────────────────────
+      ${certs.length ? `<div>
+        <div style="font-family:${MONO};font-size:6px;color:#E8631A;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:4px;">CERTIFICATIONS</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+          ${certs.map(c => `<span style="font-family:${MONO};font-size:6px;color:#CBD5E0;background:rgba(232,99,26,0.06);border:1px solid rgba(255,255,255,0.15);padding:2px 6px;">${c}</span>`).join('')}
+        </div>
+      </div>` : ''}
 
-function smallCard(product, div, images) {
-  if (!product) return `<div style="flex:1;"></div>`;
-  const a   = div.accentFrom;
-  const img = images.get(product.imageUrl) || PLACEHOLDER;
-  const fit = product.contain ? 'contain' : 'cover';
+      ${apps.length ? `<div>
+        <div style="font-family:${MONO};font-size:6px;color:#E8631A;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:3px;">APPLICATIONS</div>
+        <div style="font-family:${BODY};font-size:7px;color:#A0AEC0;line-height:1.5;">${apps.join(' · ')}</div>
+      </div>` : ''}
 
-  return `<div style="flex:1;background:${CARD_BG};border:1px solid #0d1828;display:flex;flex-direction:column;overflow:hidden;">
-    <div style="height:95px;overflow:hidden;position:relative;flex-shrink:0;">
-      <img src="${img}" style="width:100%;height:100%;object-fit:${fit};object-position:center;" alt="${product.name}" />
-      <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:${a};"></div>
+      <div style="flex:1;min-height:0;"></div>
+      <div style="font-family:${BODY};font-style:italic;font-size:6.5px;color:#666;line-height:1.5;padding-bottom:10px;">Unit configuration, color, and finish may vary depending on project requirements and specifications.</div>
     </div>
-    <div style="padding:10px 12px;flex:1;">
-      <div style="font-family:${SANS};font-weight:700;font-size:11.5px;color:#dde0e8;text-transform:uppercase;line-height:1.2;letter-spacing:0.03em;margin-bottom:2px;">${product.name}</div>
-      ${product.sku ? `<div style="font-family:${MONO};font-size:5.5px;color:${a};letter-spacing:0.12em;margin-bottom:4px;">${product.sku}</div>` : ''}
-      <div style="font-family:${MONO};font-size:6px;color:#8892A4;line-height:1.55;">${product.spec}</div>
+
+    <div style="height:32px;background:${a};display:flex;align-items:center;padding:0 22px;justify-content:space-between;flex-shrink:0;">
+      <span style="font-family:${MONO};font-size:8px;font-weight:700;color:#fff;letter-spacing:0.18em;text-transform:uppercase;">REQUEST QUOTE</span>
+      <span style="font-family:${MONO};font-size:8px;font-weight:700;color:#fff;letter-spacing:0.14em;text-transform:uppercase;">SALES@DURBOLT.COM →</span>
     </div>
-  </div>`;
-}
-
-function smallPage(products, div, images, num) {
-  const a = div.accentFrom;
-  const padded = [...products];
-  while (padded.length < 3) padded.push(null);
-
-  return `<div class="page" style="background:${DARK_BG};">
-  ${topRule(a)}
-  ${pageMeta(`DIV 0${div.id} · ${div.name.toUpperCase()}`, num)}
-  <div style="position:absolute;top:24px;left:24px;right:24px;font-family:${MONO};font-size:6.5px;color:#A0AEC0;letter-spacing:0.18em;text-transform:uppercase;">
-    ${div.name.toUpperCase()} — ACCESSORIES &amp; COMPONENTS
   </div>
-  <div style="position:absolute;top:40px;left:22px;right:22px;bottom:22px;display:flex;gap:10px;">
-    ${padded.map(p => smallCard(p, div, images)).join('')}
-  </div>
-  ${bottomBar('DURBOLT POWER — PRODUCT CATALOGUE 2025', num)}
 </div>`;
 }
 
@@ -467,30 +365,15 @@ async function main() {
   const tocPg = pg;
   pg++;
 
-  // Divisions
+  // Divisions — every product gets a full hero page
   for (const div of DIVISIONS) {
     tocItems.push({ type: 'division', label: div.name, pg, accent: div.accentFrom });
     pages.push(divisionPage(div, pg));
     pg++;
 
-    const { hero, mid, small } = groupDivision(div.products);
-
-    for (const p of hero) {
+    for (const p of div.products) {
       tocItems.push({ type: 'product', label: p.name, pg });
       pages.push(heroPage(p, div, images, pg));
-      pg++;
-    }
-
-    for (let i = 0; i < mid.length; i += 2) {
-      const pair = mid.slice(i, i + 2);
-      const label = pair.length === 2 ? `${pair[0].name} · ${pair[1].name}` : pair[0].name;
-      tocItems.push({ type: 'product', label, pg });
-      pages.push(midPage(pair, div, images, pg));
-      pg++;
-    }
-
-    for (let i = 0; i < small.length; i += 3) {
-      pages.push(smallPage(small.slice(i, i + 3), div, images, pg));
       pg++;
     }
   }
@@ -512,24 +395,29 @@ async function main() {
 </div>`;
   const viewerJs = `<script>
 (function(){
-  var PW=1122, PH=794;
+  var PW = 1122, PH = 794;
   function scale(){
     var vw = Math.min(document.documentElement.clientWidth, window.innerWidth);
-    var s = Math.max(0.25, (vw - 16) / PW);
-    if(s > 1) s = 1;
+    var s = Math.min(1, (vw - 16) / PW);
+    if(s < 0.25) s = 0.25;
     var scaledH = Math.round(PH * s);
-    var mb = scaledH - PH + 20;
+    var scaledW = Math.round(PW * s);
+    var ml = Math.max(0, Math.floor((vw - scaledW) / 2));
+    var gap = 16;
+    var mb = scaledH - PH + gap;
     document.querySelectorAll('.viewer-pages .page').forEach(function(p){
       p.style.transform = 'scale(' + s + ')';
-      p.style.transformOrigin = 'top center';
+      p.style.transformOrigin = 'top left';
+      p.style.marginLeft = ml + 'px';
       p.style.marginBottom = mb + 'px';
-      p.style.marginTop = '0';
+      p.style.display = 'block';
     });
+    document.querySelector('.viewer-pages').style.paddingBottom = '32px';
   }
   window.addEventListener('resize', scale);
-  document.addEventListener('DOMContentLoaded', scale);
-  setTimeout(scale, 100);
-  setTimeout(scale, 600);
+  setTimeout(scale, 0);
+  setTimeout(scale, 300);
+  setTimeout(scale, 800);
 })();
 </script>`;
   const html = `<!DOCTYPE html>
@@ -559,9 +447,9 @@ ${viewerJs}
   const page    = await browser.newPage();
 
   await page.setViewportSize({ width: 1122, height: 794 });
-  await page.goto(`file://${HTML_PATH}`, { waitUntil: 'load' });
+  await page.goto(`file://${HTML_PATH}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   console.log('Waiting for fonts & images...');
-  await page.waitForTimeout(7000);
+  await page.waitForTimeout(10000);
 
   console.log('Generating PDF...');
   await page.pdf({
@@ -573,20 +461,21 @@ ${viewerJs}
   });
   console.log(`PDF: ${PDF_PATH}`);
 
-  // Screenshots of 4 page types
+  // Screenshots — cover, division divider, 3 hero pages
   console.log('\nCapturing screenshots...');
-  const SHOT_DIR = '/root/catalogue-v2-screenshots';
+  const SHOT_DIR = '/root/catalogue-v5-screenshots';
   fs.mkdirSync(SHOT_DIR, { recursive: true });
 
   const els = await page.$$('.page');
   console.log(`Found ${els.length} page elements`);
 
-  // Cover=0, About=1, first division divider=3, first hero product=4
+  // Structure: 0=cover, 1=about, 2=TOC, 3=div1-divider, 4=first hero, 3+15=div2-divider, etc.
   const targets = [
-    { idx: 0, name: 'cover' },
-    { idx: 1, name: 'about' },
-    { idx: 3, name: 'division-divider' },
-    { idx: 4, name: 'hero-product' },
+    { idx: 0,  name: 'cover' },
+    { idx: 3,  name: 'division-divider' },
+    { idx: 4,  name: 'hero-01' },
+    { idx: 12, name: 'hero-mid' },
+    { idx: 20, name: 'hero-late' },
   ];
 
   for (const { idx, name } of targets) {
@@ -600,7 +489,7 @@ ${viewerJs}
   await browser.close();
 
   const pdfMB = (fs.statSync(PDF_PATH).size / 1024 / 1024).toFixed(1);
-  console.log(`\n=== CATALOGUE V2 COMPLETE ===`);
+  console.log(`\n=== CATALOGUE V5 COMPLETE ===`);
   console.log(`Pages: ${totalPages}`);
   console.log(`PDF:   ${pdfMB} MB — ${PDF_PATH}`);
   console.log(`HTML:  ${HTML_PATH}`);
