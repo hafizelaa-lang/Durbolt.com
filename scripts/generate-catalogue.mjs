@@ -108,15 +108,15 @@ function topRule(color = ACCENT) {
 
 function pageMeta(breadcrumb, num) {
   return `<div style="position:absolute;top:9px;left:22px;right:22px;display:flex;justify-content:space-between;align-items:center;z-index:9;">
-    <span style="font-family:${MONO};font-size:6.5px;color:#3a3a4a;letter-spacing:0.18em;text-transform:uppercase;">${breadcrumb}</span>
-    <span style="font-family:${MONO};font-size:6.5px;color:#2a2a3a;">${num}</span>
+    <span style="font-family:${MONO};font-size:6.5px;color:#E8631A;letter-spacing:0.18em;text-transform:uppercase;">${breadcrumb}</span>
+    <span style="font-family:${MONO};font-size:6.5px;color:#555;">${num}</span>
   </div>`;
 }
 
 function bottomBar(left, right) {
   return `<div style="position:absolute;bottom:0;left:0;right:0;height:20px;border-top:1px solid #0a1020;display:flex;align-items:center;padding:0 28px;justify-content:space-between;">
-    <span style="font-family:${MONO};font-size:6px;color:#1e2435;letter-spacing:0.12em;">${left}</span>
-    <span style="font-family:${MONO};font-size:6px;color:#1e2435;">${right}</span>
+    <span style="font-family:${MONO};font-size:6px;color:#666;letter-spacing:0.12em;">${left}</span>
+    <span style="font-family:${MONO};font-size:6px;color:#555;">${right}</span>
   </div>`;
 }
 
@@ -291,7 +291,7 @@ function heroPage(product, div, images, num) {
       <span style="font-family:${MONO};font-size:5.5px;color:#555;letter-spacing:0.2em;text-transform:uppercase;">PART NO.</span>
       <span style="font-family:${MONO};font-size:7.5px;font-weight:700;color:${a};letter-spacing:0.12em;">${product.sku}</span>
     </div>` : ''}
-    <div style="font-family:${MONO};font-size:7.5px;color:#777;line-height:1.55;margin-bottom:13px;padding-bottom:11px;border-bottom:1px solid #111d30;">${product.spec}</div>
+    <div style="font-family:${MONO};font-size:7.5px;color:#E8631A;line-height:1.55;margin-bottom:13px;padding-bottom:11px;border-bottom:1px solid #111d30;">${product.spec}</div>
 
     ${cats.map(cat => `
     <div style="margin-bottom:10px;">
@@ -299,24 +299,24 @@ function heroPage(product, div, images, num) {
       <table style="width:100%;">
         ${cat.rows.slice(0, 4).map(([k, v]) => `
         <tr style="border-bottom:1px solid #0c1528;">
-          <td style="font-family:${MONO};font-size:6.5px;color:#333;padding:2.5px 0;width:44%;letter-spacing:0.04em;">${k}</td>
-          <td style="font-family:${MONO};font-size:6.5px;color:#777;padding:2.5px 0;text-align:right;">${v}</td>
+          <td style="font-family:${MONO};font-size:6.5px;color:#A0AEC0;padding:2.5px 0;width:44%;letter-spacing:0.04em;">${k}</td>
+          <td style="font-family:${MONO};font-size:6.5px;color:#E2E8F0;padding:2.5px 0;text-align:right;">${v}</td>
         </tr>`).join('')}
       </table>
     </div>`).join('')}
 
     ${certs.length ? `
     <div style="margin-top:8px;">
-      <div style="font-family:${MONO};font-size:6.5px;color:#2a2a3a;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px;">CERTIFICATIONS</div>
+      <div style="font-family:${MONO};font-size:6.5px;color:#E8631A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px;">CERTIFICATIONS</div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;">
-        ${certs.map(c => `<span style="font-family:${MONO};font-size:6px;color:${a};background:${a}11;border:1px solid ${a}33;padding:2px 6px;">${c}</span>`).join('')}
+        ${certs.map(c => `<span style="font-family:${MONO};font-size:6px;color:#CBD5E0;background:${a}11;border:1px solid rgba(255,255,255,0.15);padding:2px 6px;">${c}</span>`).join('')}
       </div>
     </div>` : ''}
 
     ${apps.length ? `
     <div style="margin-top:7px;">
-      <div style="font-family:${MONO};font-size:6.5px;color:#2a2a3a;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;">APPLICATIONS</div>
-      <div style="font-family:${BODY};font-size:7px;color:#444;line-height:1.5;">${apps.join(' · ')}</div>
+      <div style="font-family:${MONO};font-size:6.5px;color:#E8631A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;">APPLICATIONS</div>
+      <div style="font-family:${BODY};font-size:7px;color:#A0AEC0;line-height:1.5;">${apps.join(' · ')}</div>
     </div>` : ''}
   </div>
 
@@ -342,15 +342,15 @@ function midPanel(product, div, images, side) {
     </div>
     <div style="font-family:${SANS};font-weight:800;font-size:15px;color:#e8eaf0;text-transform:uppercase;line-height:1.1;letter-spacing:0.02em;margin-bottom:3px;">${product.name}</div>
     ${product.sku ? `<div style="font-family:${MONO};font-size:6px;color:${a};letter-spacing:0.12em;margin-bottom:5px;">${product.sku}</div>` : ''}
-    <div style="font-family:${MONO};font-size:6.5px;color:#666;line-height:1.55;margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid #0c1528;">${product.spec}</div>
+    <div style="font-family:${MONO};font-size:6.5px;color:#AAB4C4;line-height:1.55;margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid #0c1528;">${product.spec}</div>
     ${cat ? `
     <div>
       <div style="font-family:${MONO};font-size:6px;color:${a};letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px;">${cat.title}</div>
       <table style="width:100%;">
         ${cat.rows.slice(0, 4).map(([k, v]) => `
         <tr>
-          <td style="font-family:${MONO};font-size:6px;color:#2a3a50;padding:2px 0;width:44%;">${k}</td>
-          <td style="font-family:${MONO};font-size:6px;color:#666;padding:2px 0;text-align:right;">${v}</td>
+          <td style="font-family:${MONO};font-size:6px;color:#A0AEC0;padding:2px 0;width:44%;">${k}</td>
+          <td style="font-family:${MONO};font-size:6px;color:#AAB4C4;padding:2px 0;text-align:right;">${v}</td>
         </tr>`).join('')}
       </table>
     </div>` : ''}
@@ -386,7 +386,7 @@ function smallCard(product, div, images) {
     <div style="padding:10px 12px;flex:1;">
       <div style="font-family:${SANS};font-weight:700;font-size:11.5px;color:#dde0e8;text-transform:uppercase;line-height:1.2;letter-spacing:0.03em;margin-bottom:2px;">${product.name}</div>
       ${product.sku ? `<div style="font-family:${MONO};font-size:5.5px;color:${a};letter-spacing:0.12em;margin-bottom:4px;">${product.sku}</div>` : ''}
-      <div style="font-family:${MONO};font-size:6px;color:#555;line-height:1.55;">${product.spec}</div>
+      <div style="font-family:${MONO};font-size:6px;color:#8892A4;line-height:1.55;">${product.spec}</div>
     </div>
   </div>`;
 }
