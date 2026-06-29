@@ -1280,6 +1280,7 @@ function SupplyModel() {
 
 // ─── Divisions ────────────────────────────────────────────────────────────────
 function Divisions() {
+  const [hoveredId, setHoveredId] = useState(null);
   return (
     <section id="divisions" className="py-28 px-6" style={{ position: "relative", zIndex: 2, background: "linear-gradient(rgba(10,10,10,0.85), rgba(10,10,10,0.85)), url('/scene2-tower-storm.jpg')", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }}>
       <OrangeLine />
@@ -1298,6 +1299,8 @@ function Divisions() {
         <div className="flex flex-col gap-6">
           {DIVISIONS.map((div, i) => {
             const Icon = ICON_MAP[div.iconName];
+            const heroImage = div.products[0]?.imageUrl;
+            const isHovered = hoveredId === div.id;
             return (
               <FadeIn key={div.id} delay={i * 0.1}>
                 <div
@@ -1308,7 +1311,38 @@ function Divisions() {
                     borderLeft: `4px solid ${div.accentFrom}`,
                     boxShadow: `inset 8px 0 30px -14px ${div.accentFrom}`,
                   }}
+                  onMouseEnter={() => setHoveredId(div.id)}
+                  onMouseLeave={() => setHoveredId(null)}
                 >
+                  {/* Full-bleed background product photo */}
+                  {heroImage && (
+                    <img
+                      src={heroImage}
+                      alt=""
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center",
+                        zIndex: 0,
+                      }}
+                    />
+                  )}
+
+                  {/* Dark overlay — lightens slightly on hover */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: isHovered ? "rgba(8,14,22,0.60)" : "rgba(8,14,22,0.75)",
+                      transition: "background 300ms ease",
+                      zIndex: 1,
+                    }}
+                  />
+
                   {/* Background watermark number */}
                   <span
                     aria-hidden="true"
@@ -1319,6 +1353,7 @@ function Divisions() {
                       lineHeight: 1,
                       color: div.accentFrom,
                       opacity: 0.08,
+                      zIndex: 2,
                     }}
                   >
                     {div.id.toString().padStart(2, "0")}
@@ -1333,12 +1368,13 @@ function Divisions() {
                       color: div.accentFrom,
                       border: `1px solid ${div.accentFrom}44`,
                       letterSpacing: "0.16em",
+                      zIndex: 2,
                     }}
                   >
                     {div.products.length} PRODUCTS
                   </div>
 
-                  <div className="relative z-10 max-w-2xl">
+                  <div className="relative max-w-2xl" style={{ zIndex: 2 }}>
                     <div className="text-xs font-semibold mb-6 flex items-center gap-3" style={{ color: div.accentFrom, fontFamily: MONO, letterSpacing: "0.2em" }}>
                       <Icon size={14} />
                       <span>DIV. {div.id.toString().padStart(2, "0")}</span>
