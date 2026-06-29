@@ -1,940 +1,563 @@
 #!/usr/bin/env node
-/**
- * Durbolt Power — Premium Product Catalogue Generator 2025
- * Outputs: /dist/catalogue/index.html + /dist/catalogue/durbolt-power-catalogue-2025.pdf
- */
+// Durbolt Power Catalogue v2 — Landscape A4, cinematic industrial design
 
 import { chromium } from '/root/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
-import { writeFileSync, mkdirSync } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { DIVISIONS } from '../src/data/divisions.js';
 import { PRODUCT_SPECS } from '../src/data/productSpecs.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUT = path.join(__dirname, '../dist/catalogue');
-mkdirSync(OUT, { recursive: true });
+const ROOT = path.resolve(__dirname, '..');
+const OUT_DIR = path.join(ROOT, 'dist', 'catalogue');
+const PDF_PATH = path.join(OUT_DIR, 'durbolt-power-catalogue-2025.pdf');
+const HTML_PATH = path.join(OUT_DIR, 'index.html');
 
-const BRAND   = '#E8631A';
-const DARK    = '#080F1A';
-const DARK2   = '#04060C';
-const MONO    = `'JetBrains Mono', 'Courier New', monospace`;
-const HEADING = `'Space Grotesk', 'Arial Black', sans-serif`;
+// ── Constants ───────────────────────────────────────────────────────────────
 
-const ALL_PRODUCT_COUNT = DIVISIONS.reduce((a, d) => a + d.products.length, 0);
+const ACCENT  = '#E8631A';
+const DARK_BG = '#060C14';
+const CARD_BG = '#0A1220';
+const SANS    = '"Barlow Condensed", "Arial Narrow", sans-serif';
+const MONO    = '"JetBrains Mono", monospace';
+const BODY    = '"Inter", "Segoe UI", sans-serif';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const PLACEHOLDER = `data:image/svg+xml;base64,${Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="100%" height="100%" fill="#0d1728"/><text x="50%" y="50%" fill="#1e2d45" font-size="16" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif">IMAGE</text></svg>'
+).toString('base64')}`;
 
-function e(s) {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+// ── Image fetching ───────────────────────────────────────────────────────────
+
+async function fetchBase64(url) {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    const ct  = (res.headers.get('content-type') || 'image/jpeg').split(';')[0];
+    return `data:${ct};base64,${buf.toString('base64')}`;
+  } catch (e) {
+    console.warn(`  ⚠  ${url.slice(0, 70)}: ${e.message}`);
+    return null;
+  }
 }
 
-function logoSVG(large = false) {
-  const fs = large ? 56 : 13;
-  const gap = large ? 16 : 10;
-  const barW = large ? 40 : 22;
-  const barH = large ? 3 : 2;
-  return `
-    <div style="display:flex;align-items:center;gap:${gap}px;">
-      <div style="width:${barW}px;height:${barH}px;background:${BRAND};flex-shrink:0;box-shadow:0 0 10px ${BRAND}88;"></div>
-      <span style="font-family:${HEADING};font-weight:800;font-size:${fs}px;letter-spacing:0.18em;line-height:1;color:#fff;">
-        DURBOLT <span style="color:${BRAND};">POWER</span>
-      </span>
-      <div style="width:${barW}px;height:${barH}px;background:${BRAND};flex-shrink:0;box-shadow:0 0 10px ${BRAND}88;"></div>
-    </div>`;
+async function buildImageMap() {
+  const urls = [...new Set(DIVISIONS.flatMap(d => d.products.map(p => p.imageUrl).filter(Boolean)))];
+  console.log(`\nFetching ${urls.length} product images...`);
+  const map = new Map();
+  for (let i = 0; i < urls.length; i += 5) {
+    const batch   = urls.slice(i, i + 5);
+    const results = await Promise.all(batch.map(fetchBase64));
+    batch.forEach((u, j) => {
+      map.set(u, results[j] ?? PLACEHOLDER);
+      console.log(`  [${i + j + 1}/${urls.length}] ${u.slice(0, 75)}`);
+    });
+  }
+  return map;
 }
 
-function specTable(productName, accent) {
-  const s = PRODUCT_SPECS[productName];
-  if (!s) return '';
-  const cats = s.categories.slice(0, 3);
-  return cats.map(cat => `
+// ── Product tier assignment ──────────────────────────────────────────────────
+
+function assignTier(product, idx) {
+  if (idx === 0) return 'hero';
+  const n = product.name.toLowerCase();
+  const s = product.spec.toLowerCase();
+  if (s.includes('mwh') || s.includes('mva') ||
+      n.includes('grid-scale') || n.includes('containerized') || n.includes('data center'))
+    return 'hero';
+  if (n.includes('cable') || n.includes('conduit') || n.includes('grounding') ||
+      n.includes('busbar') || n.includes('surge') || n.includes('exhaust') ||
+      n.includes('enclosure') || n.includes('fuel storage'))
+    return 'small';
+  return 'mid';
+}
+
+function groupDivision(products) {
+  const hero = [], mid = [], small = [];
+  products.forEach((p, i) => {
+    const t = assignTier(p, i);
+    (t === 'hero' ? hero : t === 'mid' ? mid : small).push(p);
+  });
+  return { hero, mid, small };
+}
+
+// ── HTML helpers ─────────────────────────────────────────────────────────────
+
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.page{width:297mm;height:210mm;background:${DARK_BG};position:relative;overflow:hidden;page-break-after:always;break-after:page;}
+.page:last-child{page-break-after:avoid;break-after:avoid;}
+@page{size:297mm 210mm;margin:0;}
+@media print{body,html{margin:0;padding:0;}.page{margin:0;}}
+table{border-collapse:collapse;}
+`;
+
+function logoHTML(size = 26) {
+  return `<span style="font-family:${SANS};font-weight:800;font-size:${size}px;letter-spacing:0.08em;color:#fff;line-height:1;">— DURBOLT </span><span style="font-family:${SANS};font-weight:800;font-size:${size}px;letter-spacing:0.08em;color:${ACCENT};line-height:1;">POWER</span><span style="font-family:${SANS};font-weight:800;font-size:${size}px;letter-spacing:0.08em;color:#fff;line-height:1;"> —</span>`;
+}
+
+function topRule(color = ACCENT) {
+  return `<div style="position:absolute;top:0;left:0;right:0;height:3px;background:${color};z-index:10;"></div>`;
+}
+
+function pageMeta(breadcrumb, num) {
+  return `<div style="position:absolute;top:9px;left:22px;right:22px;display:flex;justify-content:space-between;align-items:center;z-index:9;">
+    <span style="font-family:${MONO};font-size:6.5px;color:#3a3a4a;letter-spacing:0.18em;text-transform:uppercase;">${breadcrumb}</span>
+    <span style="font-family:${MONO};font-size:6.5px;color:#2a2a3a;">${num}</span>
+  </div>`;
+}
+
+function bottomBar(left, right) {
+  return `<div style="position:absolute;bottom:0;left:0;right:0;height:20px;border-top:1px solid #0a1020;display:flex;align-items:center;padding:0 28px;justify-content:space-between;">
+    <span style="font-family:${MONO};font-size:6px;color:#1e2435;letter-spacing:0.12em;">${left}</span>
+    <span style="font-family:${MONO};font-size:6px;color:#1e2435;">${right}</span>
+  </div>`;
+}
+
+// ── Cover page ───────────────────────────────────────────────────────────────
+
+function coverPage() {
+  return `<div class="page" style="background:${DARK_BG};">
+  ${topRule()}
+  <div style="position:absolute;inset:0;background:linear-gradient(135deg,${ACCENT}0d 0%,transparent 55%);"></div>
+  <div style="position:absolute;top:0;left:54%;width:1px;height:100%;background:linear-gradient(to bottom,${ACCENT}00,${ACCENT}33 30%,${ACCENT}22 70%,${ACCENT}00);"></div>
+  <div style="position:absolute;top:0;right:0;width:46%;height:100%;background:linear-gradient(to left,${DARK_BG}CC,transparent);"></div>
+
+  <div style="position:absolute;top:50%;left:42px;transform:translateY(-50%);">
+    <div style="margin-bottom:18px;">${logoHTML(30)}</div>
+    <div style="font-family:${SANS};font-weight:900;font-size:78px;line-height:0.88;color:#fff;letter-spacing:-0.02em;text-transform:uppercase;margin-bottom:18px;">PRODUCT<br><span style="color:${ACCENT};">CATALOGUE</span></div>
+    <div style="width:44px;height:3px;background:${ACCENT};margin-bottom:16px;"></div>
+    <div style="font-family:${BODY};font-size:10px;color:#555;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:5px;">CRITICAL POWER INFRASTRUCTURE</div>
+    <div style="font-family:${MONO};font-size:8.5px;color:#3a3a4a;letter-spacing:0.1em;">2025 EDITION &nbsp;·&nbsp; durbolt.com</div>
+  </div>
+
+  <div style="position:absolute;top:50%;right:42px;transform:translateY(-50%);text-align:right;">
+    <div style="font-family:${MONO};font-size:7px;color:${ACCENT};letter-spacing:0.22em;text-transform:uppercase;margin-bottom:18px;">OUR DIVISIONS</div>
+    ${DIVISIONS.map(d => `
+    <div style="margin-bottom:16px;">
+      <div style="font-family:${SANS};font-weight:700;font-size:13.5px;color:#e0e0e8;letter-spacing:0.04em;text-transform:uppercase;">${d.name}</div>
+      <div style="font-family:${BODY};font-size:7.5px;color:#3a3a50;margin-top:2px;">${d.tagline}</div>
+    </div>`).join('')}
+  </div>
+
+  <div style="position:absolute;bottom:0;left:0;right:0;height:26px;background:rgba(232,99,26,0.06);border-top:1px solid rgba(232,99,26,0.12);display:flex;align-items:center;padding:0 42px;justify-content:space-between;">
+    <span style="font-family:${MONO};font-size:6.5px;color:#2a2a3a;letter-spacing:0.14em;">FACTORY-DIRECT PRICING &nbsp;·&nbsp; GLOBAL FULFILLMENT &nbsp;·&nbsp; 44 PRODUCT LINES</span>
+    <span style="font-family:${MONO};font-size:6.5px;color:#2a2a3a;">info@durbolt.com</span>
+  </div>
+</div>`;
+}
+
+// ── About page ───────────────────────────────────────────────────────────────
+
+function aboutPage(num) {
+  return `<div class="page" style="background:${DARK_BG};">
+  ${topRule()}
+  ${pageMeta('DURBOLT POWER', num)}
+
+  <div style="position:absolute;top:26px;left:42px;right:42px;bottom:22px;display:flex;gap:32px;align-items:flex-start;padding-top:12px;">
+    <div style="flex:1.1;">
+      <div style="font-family:${MONO};font-size:7px;color:${ACCENT};letter-spacing:0.2em;text-transform:uppercase;margin-bottom:8px;">ABOUT DURBOLT POWER</div>
+      <div style="font-family:${SANS};font-weight:900;font-size:34px;color:#fff;text-transform:uppercase;line-height:0.95;letter-spacing:0.01em;margin-bottom:16px;">Critical Infrastructure.<br><span style="color:${ACCENT};">Built to Last.</span></div>
+      <p style="font-family:${BODY};font-size:8.5px;color:#666;line-height:1.75;margin-bottom:12px;">
+        Durbolt Power is a B2B supplier of industrial-grade critical power infrastructure — engineered for the most demanding environments in data centers, oil &amp; gas, utilities, and mission-critical facilities worldwide.
+      </p>
+      <p style="font-family:${BODY};font-size:8.5px;color:#666;line-height:1.75;margin-bottom:16px;">
+        With direct factory relationships and global fulfillment capability, we deliver 44 product lines across four specialized divisions — from 500kW generator sets to 100MWh containerized BESS deployments.
+      </p>
+      <div style="width:32px;height:2px;background:${ACCENT};margin-bottom:14px;"></div>
+      <div style="font-family:${MONO};font-size:7px;color:${ACCENT};letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;">KEY CAPABILITIES</div>
+      ${['Factory-direct pricing — no middlemen', 'Global fulfillment: USA, UAE, KSA, Egypt', 'Custom engineering &amp; turnkey solutions', 'Full compliance: CE, UL, IEC, ISO', 'Technical support &amp; site commissioning'].map(cap => `
+      <div style="display:flex;align-items:flex-start;margin-bottom:5px;">
+        <span style="color:${ACCENT};margin-right:8px;font-size:9px;flex-shrink:0;">—</span>
+        <span style="font-family:${BODY};font-size:8px;color:#555;">${cap}</span>
+      </div>`).join('')}
+    </div>
+
+    <div style="flex:1;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        ${[['44','Product Lines'],['4','Divisions'],['500kW','to 100MWh+'],['Global','Fulfillment']].map(([n,l]) => `
+        <div style="background:${CARD_BG};border:1px solid #111d30;padding:12px 14px;border-left:3px solid ${ACCENT};">
+          <div style="font-family:${SANS};font-weight:900;font-size:28px;color:#fff;line-height:1;letter-spacing:-0.02em;">${n}</div>
+          <div style="font-family:${MONO};font-size:6.5px;color:#3a3a50;letter-spacing:0.1em;text-transform:uppercase;margin-top:4px;">${l}</div>
+        </div>`).join('')}
+      </div>
+
+      <div style="font-family:${MONO};font-size:7px;color:${ACCENT};letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;">DIVISIONS</div>
+      ${DIVISIONS.map(d => `
+      <div style="display:flex;align-items:flex-start;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #0c1420;">
+        <div style="width:3px;height:34px;background:${d.accentFrom};margin-right:12px;flex-shrink:0;margin-top:1px;"></div>
+        <div>
+          <div style="font-family:${SANS};font-weight:700;font-size:11px;color:#dde0e8;letter-spacing:0.04em;text-transform:uppercase;">${d.name}</div>
+          <div style="font-family:${BODY};font-size:7px;color:#3a3a50;margin-top:2px;">${d.products.length} products &nbsp;·&nbsp; ${d.tagline}</div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>
+  ${bottomBar('DURBOLT POWER — PRODUCT CATALOGUE 2025', num)}
+</div>`;
+}
+
+// ── TOC page ─────────────────────────────────────────────────────────────────
+
+function tocPage(entries, num) {
+  return `<div class="page" style="background:${DARK_BG};">
+  ${topRule()}
+  ${pageMeta('DURBOLT POWER', num)}
+
+  <div style="position:absolute;top:26px;left:42px;right:42px;bottom:22px;padding-top:10px;">
+    <div style="font-family:${MONO};font-size:7px;color:${ACCENT};letter-spacing:0.22em;text-transform:uppercase;margin-bottom:6px;">CONTENTS</div>
+    <div style="font-family:${SANS};font-weight:900;font-size:30px;color:#fff;text-transform:uppercase;line-height:1;margin-bottom:18px;">TABLE OF <span style="color:${ACCENT};">CONTENTS</span></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 36px;">
+      ${entries.map(e => {
+        if (e.type === 'division') return `
+        <div style="grid-column:1/-1;display:flex;align-items:center;padding:7px 0;margin-top:4px;border-bottom:1px solid ${e.accent}22;">
+          <div style="width:4px;height:4px;background:${e.accent};margin-right:10px;flex-shrink:0;"></div>
+          <span style="font-family:${SANS};font-weight:700;font-size:11.5px;color:#e0e0e8;letter-spacing:0.04em;text-transform:uppercase;flex:1;">${e.label}</span>
+          <span style="font-family:${MONO};font-size:7.5px;color:#333;">${e.pg}</span>
+        </div>`;
+        return `
+        <div style="display:flex;align-items:center;padding:3px 0 3px 14px;">
+          <span style="font-family:${BODY};font-size:7.5px;color:#444;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:6px;">${e.label}</span>
+          <span style="font-family:${MONO};font-size:7px;color:#2a2a3a;flex-shrink:0;">${e.pg}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+  ${bottomBar('DURBOLT POWER — PRODUCT CATALOGUE 2025', num)}
+</div>`;
+}
+
+// ── Division divider ──────────────────────────────────────────────────────────
+
+function divisionPage(div, num) {
+  const a = div.accentFrom;
+  const nameLines = div.name.includes(' & ')
+    ? div.name.split(' & ').map((part, i) => i === 0 ? part : `<span style="color:${a};">&amp;</span> ${part}`)
+    : [div.name];
+
+  return `<div class="page" style="background:${DARK_BG};">
+  ${topRule(a)}
+  <div style="position:absolute;inset:0;background:linear-gradient(135deg,${a}0f 0%,transparent 65%);"></div>
+  <div style="position:absolute;top:0;left:0;width:5px;height:100%;background:${a};"></div>
+  <div style="position:absolute;bottom:-30px;right:-20px;font-family:${SANS};font-weight:900;font-size:260px;color:#fff;opacity:0.018;line-height:1;user-select:none;pointer-events:none;">${div.id}</div>
+
+  <div style="position:absolute;inset:0;display:flex;align-items:center;padding:0 60px 0 60px;">
+    <div>
+      <div style="font-family:${MONO};font-size:8px;color:${a};letter-spacing:0.25em;text-transform:uppercase;margin-bottom:16px;">DIVISION 0${div.id} &nbsp;·&nbsp; ${div.products.length} PRODUCTS</div>
+      <div style="font-family:${SANS};font-weight:900;font-size:58px;color:#fff;text-transform:uppercase;line-height:0.92;letter-spacing:-0.01em;margin-bottom:18px;">${nameLines.join('<br>')}</div>
+      <div style="width:44px;height:3px;background:${a};margin-bottom:18px;"></div>
+      <div style="font-family:${BODY};font-size:10px;color:#555;line-height:1.75;max-width:440px;">${div.description}</div>
+      <div style="margin-top:22px;font-family:${SANS};font-weight:700;font-size:13px;color:${a};letter-spacing:0.1em;text-transform:uppercase;">${div.tagline}</div>
+    </div>
+  </div>
+
+  <div style="position:absolute;bottom:14px;right:24px;font-family:${MONO};font-size:7px;color:#1e2435;">${num}</div>
+  <div style="position:absolute;bottom:14px;left:60px;font-family:${MONO};font-size:6.5px;color:#1e2435;letter-spacing:0.12em;text-transform:uppercase;">DURBOLT POWER — ${div.name.toUpperCase()}</div>
+</div>`;
+}
+
+// ── Hero product page (1 per page) ───────────────────────────────────────────
+
+function heroPage(product, div, images, num) {
+  const a    = div.accentFrom;
+  const img  = images.get(product.imageUrl) || PLACEHOLDER;
+  const fit  = product.contain ? 'contain' : 'cover';
+  const spec = PRODUCT_SPECS[product.name];
+  const cats = spec ? spec.categories.slice(0, 2) : [];
+  const certs = spec ? spec.certifications.slice(0, 4) : [];
+  const apps  = spec ? spec.applications.slice(0, 3) : [];
+
+  return `<div class="page" style="background:${DARK_BG};">
+  ${topRule(a)}
+  ${pageMeta(`DIV 0${div.id} · ${div.name.toUpperCase()}`, num)}
+
+  <div style="position:absolute;top:0;left:0;width:54%;height:100%;overflow:hidden;">
+    <img src="${img}" style="width:100%;height:100%;object-fit:${fit};object-position:center;" alt="${product.name}" />
+    <div style="position:absolute;inset:0;background:linear-gradient(to right,transparent 30%,${DARK_BG}ee 85%,${DARK_BG} 100%);"></div>
+    <div style="position:absolute;inset:0;background:linear-gradient(to top,${DARK_BG}cc 0%,transparent 40%);"></div>
+  </div>
+
+  <div style="position:absolute;top:24px;left:54%;right:0;bottom:0;padding:18px 28px 22px 22px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;">
+    <div style="font-family:${MONO};font-size:7px;color:${a};letter-spacing:0.2em;text-transform:uppercase;margin-bottom:10px;">${div.name.toUpperCase()}</div>
+    <div style="font-family:${SANS};font-weight:900;font-size:26px;color:#fff;text-transform:uppercase;line-height:1.0;letter-spacing:0.01em;margin-bottom:8px;">${product.name}</div>
+    <div style="font-family:${MONO};font-size:7.5px;color:#777;line-height:1.55;margin-bottom:13px;padding-bottom:11px;border-bottom:1px solid #111d30;">${product.spec}</div>
+
+    ${cats.map(cat => `
     <div style="margin-bottom:10px;">
-      <div style="
-        font-family:${MONO};font-size:8px;font-weight:700;color:${accent};
-        letter-spacing:0.18em;text-transform:uppercase;
-        margin-bottom:5px;padding-bottom:4px;
-        border-bottom:1px solid ${accent}30;
-      ">${e(cat.title)}</div>
-      <table style="width:100%;border-collapse:collapse;">
-        ${cat.rows.slice(0, 4).map(([lbl, val]) => `
-          <tr>
-            <td style="font-family:${MONO};font-size:8px;color:#666;padding:2.5px 0;width:36%;vertical-align:top;letter-spacing:0.03em;">${e(lbl)}</td>
-            <td style="font-family:${MONO};font-size:8px;color:#C0C0C0;padding:2.5px 0 2.5px 8px;letter-spacing:0.02em;">${e(val)}</td>
-          </tr>`).join('')}
+      <div style="font-family:${MONO};font-size:6.5px;color:${a};letter-spacing:0.18em;text-transform:uppercase;margin-bottom:4px;">${cat.title}</div>
+      <table style="width:100%;">
+        ${cat.rows.slice(0, 4).map(([k, v]) => `
+        <tr style="border-bottom:1px solid #0c1528;">
+          <td style="font-family:${MONO};font-size:6.5px;color:#333;padding:2.5px 0;width:44%;letter-spacing:0.04em;">${k}</td>
+          <td style="font-family:${MONO};font-size:6.5px;color:#777;padding:2.5px 0;text-align:right;">${v}</td>
+        </tr>`).join('')}
       </table>
-    </div>`).join('');
+    </div>`).join('')}
+
+    ${certs.length ? `
+    <div style="margin-top:8px;">
+      <div style="font-family:${MONO};font-size:6.5px;color:#2a2a3a;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px;">CERTIFICATIONS</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">
+        ${certs.map(c => `<span style="font-family:${MONO};font-size:6px;color:${a};background:${a}11;border:1px solid ${a}33;padding:2px 6px;">${c}</span>`).join('')}
+      </div>
+    </div>` : ''}
+
+    ${apps.length ? `
+    <div style="margin-top:7px;">
+      <div style="font-family:${MONO};font-size:6.5px;color:#2a2a3a;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;">APPLICATIONS</div>
+      <div style="font-family:${BODY};font-size:7px;color:#444;line-height:1.5;">${apps.join(' · ')}</div>
+    </div>` : ''}
+  </div>
+
+  ${bottomBar('durbolt.com &nbsp;·&nbsp; Unit configuration, color, and finish may vary.', num)}
+</div>`;
 }
 
-function certBadges(productName, accent) {
-  const s = PRODUCT_SPECS[productName];
-  if (!s?.certifications?.length) return '';
-  return s.certifications.slice(0, 6).map(c => `
-    <span style="
-      font-family:${MONO};font-size:7.5px;font-weight:600;
-      color:${accent};border:1px solid ${accent}44;
-      padding:2px 7px;letter-spacing:0.1em;
-      display:inline-block;margin-right:4px;margin-bottom:3px;
-    ">${e(c)}</span>`).join('');
+// ── Mid-tier page (2 per page) ───────────────────────────────────────────────
+
+function midPanel(product, div, images, side) {
+  if (!product) return `<div style="flex:1;"></div>`;
+  const a   = div.accentFrom;
+  const img = images.get(product.imageUrl) || PLACEHOLDER;
+  const fit = product.contain ? 'contain' : 'cover';
+  const spec = PRODUCT_SPECS[product.name];
+  const cat  = spec ? spec.categories[0] : null;
+
+  return `<div style="flex:1;padding:20px;display:flex;flex-direction:column;border-right:${side === 'left' ? '1px solid #0c1528' : 'none'};">
+    <div style="height:105px;overflow:hidden;position:relative;margin-bottom:11px;flex-shrink:0;">
+      <img src="${img}" style="width:100%;height:100%;object-fit:${fit};object-position:center;" alt="${product.name}" />
+      <div style="position:absolute;inset:0;background:linear-gradient(to top,${DARK_BG}cc,transparent 50%);"></div>
+      <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:${a};"></div>
+    </div>
+    <div style="font-family:${SANS};font-weight:800;font-size:15px;color:#e8eaf0;text-transform:uppercase;line-height:1.1;letter-spacing:0.02em;margin-bottom:5px;">${product.name}</div>
+    <div style="font-family:${MONO};font-size:6.5px;color:#666;line-height:1.55;margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid #0c1528;">${product.spec}</div>
+    ${cat ? `
+    <div>
+      <div style="font-family:${MONO};font-size:6px;color:${a};letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px;">${cat.title}</div>
+      <table style="width:100%;">
+        ${cat.rows.slice(0, 4).map(([k, v]) => `
+        <tr>
+          <td style="font-family:${MONO};font-size:6px;color:#2a3a50;padding:2px 0;width:44%;">${k}</td>
+          <td style="font-family:${MONO};font-size:6px;color:#666;padding:2px 0;text-align:right;">${v}</td>
+        </tr>`).join('')}
+      </table>
+    </div>` : ''}
+  </div>`;
 }
 
-function applications(productName) {
-  const s = PRODUCT_SPECS[productName];
-  if (!s?.applications?.length) return '';
-  return s.applications.slice(0, 5).join('  ·  ');
+function midPage(products, div, images, num) {
+  const a = div.accentFrom;
+  return `<div class="page" style="background:${DARK_BG};">
+  ${topRule(a)}
+  ${pageMeta(`DIV 0${div.id} · ${div.name.toUpperCase()}`, num)}
+  <div style="position:absolute;top:22px;left:0;right:0;bottom:0;display:flex;">
+    ${midPanel(products[0], div, images, 'left')}
+    ${midPanel(products[1] ?? null, div, images, 'right')}
+  </div>
+  ${bottomBar('DURBOLT POWER — PRODUCT CATALOGUE 2025', num)}
+</div>`;
 }
 
-// ─── CSS ──────────────────────────────────────────────────────────────────────
+// ── Small accessories page (3 per page) ─────────────────────────────────────
 
-const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+function smallCard(product, div, images) {
+  if (!product) return `<div style="flex:1;"></div>`;
+  const a   = div.accentFrom;
+  const img = images.get(product.imageUrl) || PLACEHOLDER;
+  const fit = product.contain ? 'contain' : 'cover';
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  return `<div style="flex:1;background:${CARD_BG};border:1px solid #0d1828;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="height:95px;overflow:hidden;position:relative;flex-shrink:0;">
+      <img src="${img}" style="width:100%;height:100%;object-fit:${fit};object-position:center;" alt="${product.name}" />
+      <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:${a};"></div>
+    </div>
+    <div style="padding:10px 12px;flex:1;">
+      <div style="font-family:${SANS};font-weight:700;font-size:11.5px;color:#dde0e8;text-transform:uppercase;line-height:1.2;letter-spacing:0.03em;margin-bottom:5px;">${product.name}</div>
+      <div style="font-family:${MONO};font-size:6px;color:#555;line-height:1.55;">${product.spec}</div>
+    </div>
+  </div>`;
+}
 
-  html, body {
-    background: #000;
-    width: 794px;
-    -webkit-font-smoothing: antialiased;
-  }
+function smallPage(products, div, images, num) {
+  const a = div.accentFrom;
+  const padded = [...products];
+  while (padded.length < 3) padded.push(null);
 
-  .page {
-    width: 794px;
-    height: 1123px;
-    background: ${DARK};
-    position: relative;
-    overflow: hidden;
-    page-break-after: always;
-    break-after: page;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
+  return `<div class="page" style="background:${DARK_BG};">
+  ${topRule(a)}
+  ${pageMeta(`DIV 0${div.id} · ${div.name.toUpperCase()}`, num)}
+  <div style="position:absolute;top:24px;left:24px;right:24px;font-family:${MONO};font-size:6.5px;color:#1e2435;letter-spacing:0.18em;text-transform:uppercase;">
+    ${div.name.toUpperCase()} — ACCESSORIES &amp; COMPONENTS
+  </div>
+  <div style="position:absolute;top:40px;left:22px;right:22px;bottom:22px;display:flex;gap:10px;">
+    ${padded.map(p => smallCard(p, div, images)).join('')}
+  </div>
+  ${bottomBar('DURBOLT POWER — PRODUCT CATALOGUE 2025', num)}
+</div>`;
+}
 
-  /* Web viewer spacing between pages */
-  @media screen {
-    .page { margin-bottom: 8px; }
-    body { padding: 24px; }
-    #viewer-bar {
-      position: fixed; top: 0; left: 0; right: 0;
-      background: rgba(4,6,12,0.97);
-      border-bottom: 1px solid rgba(232,99,26,0.3);
-      padding: 10px 24px;
-      display: flex; align-items: center; justify-content: space-between;
-      z-index: 100;
+// ── Back cover ───────────────────────────────────────────────────────────────
+
+function backCoverPage() {
+  return `<div class="page" style="background:${DARK_BG};">
+  ${topRule()}
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center,#0d1828 0%,${DARK_BG} 65%);"></div>
+  <div style="position:absolute;inset:0;opacity:0.025;background:repeating-linear-gradient(0deg,transparent,transparent 22px,${ACCENT} 22px,${ACCENT} 23px),repeating-linear-gradient(90deg,transparent,transparent 22px,${ACCENT} 22px,${ACCENT} 23px);"></div>
+
+  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+    <div style="margin-bottom:18px;">${logoHTML(34)}</div>
+    <div style="font-family:${SANS};font-weight:300;font-size:12px;color:#444;letter-spacing:0.32em;text-transform:uppercase;margin-bottom:26px;">CRITICAL POWER INFRASTRUCTURE</div>
+    <div style="width:44px;height:2px;background:${ACCENT};margin-bottom:26px;"></div>
+    <div style="display:flex;gap:52px;margin-bottom:26px;">
+      ${[['WEBSITE','durbolt.com'],['EMAIL','info@durbolt.com'],['COVERAGE','USA · UAE · KSA · EG']].map(([l,v]) => `
+      <div>
+        <div style="font-family:${MONO};font-size:6.5px;color:${ACCENT};letter-spacing:0.2em;text-transform:uppercase;margin-bottom:6px;">${l}</div>
+        <div style="font-family:${BODY};font-size:9px;color:#777;">${v}</div>
+      </div>`).join('')}
+    </div>
+    <div style="font-family:${MONO};font-size:6.5px;color:#1e2435;letter-spacing:0.1em;">© 2025 DURBOLT POWER &nbsp;·&nbsp; ALL RIGHTS RESERVED &nbsp;·&nbsp; B2B SUPPLIER — FACTORY-DIRECT PRICING</div>
+  </div>
+</div>`;
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+
+async function main() {
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+
+  const images = await buildImageMap();
+
+  // Build all pages and collect TOC entries
+  const pages    = [];
+  const tocItems = [];
+  let   pg       = 1;
+
+  // Cover
+  pages.push(coverPage());
+  pg++;
+
+  // About
+  pages.push(aboutPage(pg));
+  pg++;
+
+  // TOC (placeholder — filled in after all pages are built)
+  const TOC_MARKER = '<!-- TOC -->';
+  pages.push(TOC_MARKER);
+  const tocPg = pg;
+  pg++;
+
+  // Divisions
+  for (const div of DIVISIONS) {
+    tocItems.push({ type: 'division', label: div.name, pg, accent: div.accentFrom });
+    pages.push(divisionPage(div, pg));
+    pg++;
+
+    const { hero, mid, small } = groupDivision(div.products);
+
+    for (const p of hero) {
+      tocItems.push({ type: 'product', label: p.name, pg });
+      pages.push(heroPage(p, div, images, pg));
+      pg++;
+    }
+
+    for (let i = 0; i < mid.length; i += 2) {
+      const pair = mid.slice(i, i + 2);
+      const label = pair.length === 2 ? `${pair[0].name} · ${pair[1].name}` : pair[0].name;
+      tocItems.push({ type: 'product', label, pg });
+      pages.push(midPage(pair, div, images, pg));
+      pg++;
+    }
+
+    for (let i = 0; i < small.length; i += 3) {
+      pages.push(smallPage(small.slice(i, i + 3), div, images, pg));
+      pg++;
     }
   }
 
-  @media print {
-    @page { size: A4; margin: 0; }
-    html, body { width: 210mm; padding: 0; }
-    .page { width: 210mm; height: 297mm; }
-    #viewer-bar, #viewer-bar * { display: none !important; }
-  }
-`;
-
-// ─── Page: Cover ──────────────────────────────────────────────────────────────
-
-function coverPage() {
-  return `
-<div class="page" style="
-  background: radial-gradient(ellipse at 50% 40%, #0D1825 0%, ${DARK2} 70%);
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-">
-  <!-- Grid pattern -->
-  <div style="position:absolute;inset:0;
-    background-image:
-      linear-gradient(rgba(232,99,26,0.035) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(232,99,26,0.035) 1px, transparent 1px);
-    background-size:44px 44px;
-    pointer-events:none;
-  "></div>
-
-  <!-- Vignette -->
-  <div style="position:absolute;inset:0;
-    background:radial-gradient(ellipse at center, transparent 20%, rgba(4,6,12,0.75) 100%);
-  "></div>
-
-  <!-- Corner accents -->
-  <div style="position:absolute;top:40px;left:40px;width:48px;height:48px;
-    border-top:2px solid ${BRAND};border-left:2px solid ${BRAND};opacity:0.6;"></div>
-  <div style="position:absolute;top:40px;right:40px;width:48px;height:48px;
-    border-top:2px solid ${BRAND};border-right:2px solid ${BRAND};opacity:0.6;"></div>
-  <div style="position:absolute;bottom:40px;left:40px;width:48px;height:48px;
-    border-bottom:2px solid ${BRAND};border-left:2px solid ${BRAND};opacity:0.6;"></div>
-  <div style="position:absolute;bottom:40px;right:40px;width:48px;height:48px;
-    border-bottom:2px solid ${BRAND};border-right:2px solid ${BRAND};opacity:0.6;"></div>
-
-  <!-- Main content -->
-  <div style="position:relative;z-index:1;text-align:center;padding:0 60px;">
-
-    <!-- Orange line top -->
-    <div style="width:80px;height:2px;background:${BRAND};margin:0 auto 44px;
-      box-shadow:0 0 24px ${BRAND};"></div>
-
-    <!-- Logo -->
-    <div style="margin-bottom:10px;">
-      ${logoSVG(true)}
-    </div>
-
-    <!-- Tagline -->
-    <div style="
-      font-family:${MONO};font-size:10px;letter-spacing:0.28em;color:#666;
-      text-transform:uppercase;margin-bottom:52px;
-    ">Critical Power Infrastructure · Engineered for the World</div>
-
-    <!-- Catalogue title box -->
-    <div style="
-      border:1px solid rgba(232,99,26,0.35);
-      padding:18px 48px;
-      display:inline-block;
-      margin-bottom:52px;
-      background:rgba(232,99,26,0.04);
-    ">
-      <div style="font-family:${MONO};font-size:9px;color:${BRAND};letter-spacing:0.28em;
-        text-transform:uppercase;margin-bottom:6px;">PRODUCT CATALOGUE</div>
-      <div style="font-family:${HEADING};font-size:42px;font-weight:800;
-        color:#fff;letter-spacing:0.12em;line-height:1;">2025</div>
-    </div>
-
-    <!-- Stats row -->
-    <div style="display:flex;gap:0;justify-content:center;border:1px solid rgba(255,255,255,0.06);">
-      ${[
-        ['44', 'Product Lines'],
-        ['4', 'Divisions'],
-        ['50+', 'Countries'],
-        ['B2B', 'Direct Supply'],
-      ].map(([n, l], i) => `
-        <div style="
-          padding:20px 36px;
-          text-align:center;
-          ${i > 0 ? 'border-left:1px solid rgba(255,255,255,0.06);' : ''}
-        ">
-          <div style="font-family:${HEADING};font-weight:800;font-size:26px;
-            color:${BRAND};line-height:1;margin-bottom:5px;">${n}</div>
-          <div style="font-family:${MONO};font-size:8px;color:#555;
-            letter-spacing:0.2em;text-transform:uppercase;">${l}</div>
-        </div>`).join('')}
-    </div>
-
-    <!-- Orange line bottom -->
-    <div style="width:80px;height:2px;background:${BRAND};margin:48px auto 0;
-      box-shadow:0 0 24px ${BRAND};"></div>
-  </div>
-
-  <!-- Footer -->
-  <div style="
-    position:absolute;bottom:36px;left:0;right:0;
-    display:flex;justify-content:space-between;align-items:center;
-    padding:0 52px;z-index:1;
-  ">
-    <div style="font-family:${MONO};font-size:8px;color:#444;letter-spacing:0.18em;">
-      CONFIDENTIAL — B2B PROCUREMENT USE ONLY
-    </div>
-    <div style="font-family:${MONO};font-size:8px;color:#444;letter-spacing:0.18em;">
-      DURBOLT.COM · SALES@DURBOLT.COM
-    </div>
-  </div>
-</div>`;
-}
-
-// ─── Page: About ──────────────────────────────────────────────────────────────
-
-function aboutPage() {
-  const stats = [
-    ['20+', 'Years of Experience', 'Established supplier of critical power infrastructure across global markets.'],
-    ['500+', 'Projects Delivered', 'Data centers, hospitals, utilities, telecoms, oil & gas, and government.'],
-    ['50+', 'Countries Served', 'Active supply chains across the USA, Middle East, Africa, and South Asia.'],
-    ['$100M+', 'Sourced to Date', 'Factory-direct B2B pricing. No middlemen. No markup on margin.'],
-  ];
-  return `
-<div class="page" style="background:${DARK};display:flex;flex-direction:column;">
-
-  <!-- Header bar -->
-  <div style="
-    height:56px;display:flex;align-items:center;justify-content:space-between;
-    padding:0 48px;border-bottom:1px solid rgba(232,99,26,0.15);
-    flex-shrink:0;
-  ">
-    ${logoSVG(false)}
-    <div style="font-family:${MONO};font-size:8px;color:#444;letter-spacing:0.2em;">ABOUT DURBOLT POWER</div>
-  </div>
-
-  <!-- Content -->
-  <div style="flex:1;display:flex;flex-direction:column;padding:52px 48px 40px;">
-
-    <!-- Section label -->
-    <div style="font-family:${MONO};font-size:9px;font-weight:700;color:${BRAND};
-      letter-spacing:0.26em;text-transform:uppercase;margin-bottom:14px;">
-      COMPANY OVERVIEW
-    </div>
-
-    <!-- Heading -->
-    <h1 style="font-family:${HEADING};font-size:42px;font-weight:800;
-      color:#fff;letter-spacing:-0.02em;line-height:1.05;margin-bottom:20px;">
-      Built for<br><span style="color:${BRAND};">Critical Infrastructure.</span>
-    </h1>
-
-    <!-- Description -->
-    <p style="font-family:${HEADING};font-size:13px;color:#A0A0A0;line-height:1.75;
-      max-width:540px;margin-bottom:44px;">
-      Durbolt Power is a B2B-direct supplier of industrial power generation, distribution,
-      energy storage, connectivity, and cooling infrastructure. We source factory-direct
-      from certified manufacturers worldwide and supply procurement teams, EPCs, and
-      engineering firms across 50+ countries — from the U.S. to the UAE, Saudi Arabia,
-      Egypt, and beyond.
-    </p>
-
-    <!-- Stats grid -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:44px;">
-      ${stats.map(([num, label, desc]) => `
-        <div style="
-          background:rgba(232,99,26,0.04);
-          border:1px solid rgba(232,99,26,0.14);
-          padding:28px 28px;
-        ">
-          <div style="font-family:${HEADING};font-size:38px;font-weight:800;
-            color:${BRAND};line-height:1;margin-bottom:4px;">${num}</div>
-          <div style="font-family:${MONO};font-size:9px;font-weight:700;color:#fff;
-            letter-spacing:0.16em;text-transform:uppercase;margin-bottom:10px;">${label}</div>
-          <p style="font-family:${HEADING};font-size:11px;color:#666;line-height:1.6;">${desc}</p>
-        </div>`).join('')}
-    </div>
-
-    <!-- Division list -->
-    <div>
-      <div style="font-family:${MONO};font-size:9px;font-weight:700;color:${BRAND};
-        letter-spacing:0.22em;text-transform:uppercase;margin-bottom:16px;">
-        FOUR DIVISIONS · ${ALL_PRODUCT_COUNT} PRODUCT LINES
-      </div>
-      <div style="display:flex;gap:2px;">
-        ${DIVISIONS.map(d => `
-          <div style="
-            flex:1;padding:14px 16px;
-            background:rgba(255,255,255,0.02);
-            border:1px solid ${d.accentFrom}22;
-            border-left:3px solid ${d.accentFrom};
-          ">
-            <div style="font-family:${MONO};font-size:8px;color:${d.accentFrom};
-              letter-spacing:0.16em;margin-bottom:5px;">DIV. ${String(d.id).padStart(2,'0')}</div>
-            <div style="font-family:${HEADING};font-size:10px;font-weight:700;
-              color:#E0E0E0;line-height:1.3;margin-bottom:4px;">${d.name}</div>
-            <div style="font-family:${MONO};font-size:8px;color:#555;">
-              ${d.products.length} products</div>
-          </div>`).join('')}
-      </div>
-    </div>
-
-    <!-- Certifications note -->
-    <div style="
-      margin-top:auto;
-      padding-top:24px;
-      border-top:1px solid rgba(255,255,255,0.06);
-      display:flex;align-items:center;gap:16px;
-    ">
-      <div style="font-family:${MONO};font-size:8px;color:#444;letter-spacing:0.12em;">
-        ALL PRODUCTS CERTIFIED TO:
-      </div>
-      ${['IEC','UL','CE','ANSI','ISO 9001','IEEE'].map(c => `
-        <span style="font-family:${MONO};font-size:8px;font-weight:600;
-          color:#666;border:1px solid #333;padding:2px 8px;
-          letter-spacing:0.1em;">${c}</span>`).join('')}
-    </div>
-  </div>
-</div>`;
-}
-
-// ─── Page: Division Divider ───────────────────────────────────────────────────
-
-function divisionDivider(div) {
-  const accent = div.accentFrom;
-  return `
-<div class="page" style="
-  background:${DARK2};
-  display:flex;flex-direction:column;
-  position:relative;overflow:hidden;
-">
-  <!-- Background: large faded division number -->
-  <div style="
-    position:absolute;
-    top:-30px;right:-20px;
-    font-family:${HEADING};font-size:320px;font-weight:800;
-    color:rgba(255,255,255,0.018);
-    line-height:1;letter-spacing:-0.05em;
-    pointer-events:none;user-select:none;
-    white-space:nowrap;
-  ">0${div.id}</div>
-
-  <!-- Diagonal accent line -->
-  <div style="
-    position:absolute;
-    top:0;left:0;right:0;bottom:0;
-    background:linear-gradient(135deg,
-      ${accent}08 0%,
-      transparent 50%,
-      ${accent}04 100%
-    );
-    pointer-events:none;
-  "></div>
-
-  <!-- Left accent bar -->
-  <div style="
-    position:absolute;left:0;top:0;bottom:0;
-    width:5px;
-    background:linear-gradient(180deg, transparent 0%, ${accent} 30%, ${accent} 70%, transparent 100%);
-    box-shadow:0 0 24px ${accent}88;
-  "></div>
-
-  <!-- Header -->
-  <div style="
-    height:56px;display:flex;align-items:center;justify-content:space-between;
-    padding:0 48px 0 60px;
-    border-bottom:1px solid ${accent}18;
-    flex-shrink:0;
-    position:relative;z-index:1;
-  ">
-    ${logoSVG(false)}
-    <div style="font-family:${MONO};font-size:8px;color:${accent};letter-spacing:0.2em;opacity:0.7;">
-      DIVISION ${String(div.id).padStart(2,'0')}
-    </div>
-  </div>
-
-  <!-- Main content -->
-  <div style="
-    flex:1;display:flex;flex-direction:column;
-    justify-content:center;
-    padding:0 72px 0 60px;
-    position:relative;z-index:1;
-  ">
-    <!-- Division badge -->
-    <div style="
-      display:inline-flex;align-items:center;gap:10px;
-      margin-bottom:24px;
-    ">
-      <div style="width:32px;height:2px;background:${accent};box-shadow:0 0 12px ${accent};"></div>
-      <span style="
-        font-family:${MONO};font-size:9px;font-weight:700;
-        color:${accent};letter-spacing:0.24em;text-transform:uppercase;
-      ">DIVISION ${String(div.id).padStart(2,'0')} — ${div.products.length} PRODUCTS</span>
-    </div>
-
-    <!-- Division name -->
-    <h1 style="
-      font-family:${HEADING};font-size:52px;font-weight:800;
-      color:#fff;letter-spacing:-0.02em;line-height:1.05;
-      margin-bottom:16px;max-width:580px;
-    ">${e(div.name)}</h1>
-
-    <!-- Tagline -->
-    <p style="
-      font-family:${HEADING};font-size:18px;font-style:italic;
-      color:${accent};margin-bottom:28px;letter-spacing:0.01em;
-    ">${e(div.tagline)}</p>
-
-    <!-- Accent rule -->
-    <div style="
-      width:280px;height:1px;
-      background:linear-gradient(90deg, ${accent}, transparent);
-      margin-bottom:28px;
-    "></div>
-
-    <!-- Description -->
-    <p style="
-      font-family:${HEADING};font-size:13px;color:#8A8A8A;
-      line-height:1.8;max-width:520px;margin-bottom:52px;
-    ">${e(div.description)}</p>
-
-    <!-- Product list preview -->
-    <div style="
-      display:grid;grid-template-columns:repeat(3,1fr);gap:2px;
-      max-width:620px;
-    ">
-      ${div.products.slice(0, 9).map((p, i) => `
-        <div style="
-          font-family:${MONO};font-size:8px;color:#555;
-          padding:6px 10px;
-          background:rgba(255,255,255,0.02);
-          border-left:2px solid ${accent}33;
-          letter-spacing:0.04em;
-          line-height:1.4;
-        ">${i+1 < 10 ? '0'+(i+1) : i+1} ${e(p.name)}</div>`).join('')}
-      ${div.products.length > 9 ? `
-        <div style="
-          font-family:${MONO};font-size:8px;color:${accent};
-          padding:6px 10px;
-          background:${accent}08;
-          border-left:2px solid ${accent};
-          letter-spacing:0.1em;
-        ">+${div.products.length - 9} MORE</div>` : ''}
-    </div>
-  </div>
-
-  <!-- Footer bar -->
-  <div style="
-    height:44px;display:flex;align-items:center;justify-content:flex-end;
-    padding:0 48px;
-    border-top:1px solid ${accent}12;
-    flex-shrink:0;position:relative;z-index:1;
-  ">
-    <div style="font-family:${MONO};font-size:8px;color:#333;letter-spacing:0.18em;">
-      DURBOLT POWER · PRODUCT CATALOGUE 2025
-    </div>
-  </div>
-</div>`;
-}
-
-// ─── Page: Product ────────────────────────────────────────────────────────────
-
-function productPage(product, division, divProductIndex, divProductTotal, globalIndex) {
-  const accent = division.accentFrom;
-  const specs = specTable(product.name, accent);
-  const certs = certBadges(product.name, accent);
-  const apps  = applications(product.name);
-  const imgFit = product.contain ? 'contain' : 'cover';
-  const imgBg  = product.contain ? '#0A0A12' : DARK;
-
-  return `
-<div class="page" style="background:${DARK};display:flex;flex-direction:column;">
-
-  <!-- Header bar -->
-  <div style="
-    height:44px;display:flex;align-items:center;justify-content:space-between;
-    padding:0 20px 0 0;
-    background:rgba(4,6,12,0.9);
-    border-bottom:1px solid ${accent}18;
-    flex-shrink:0;
-  ">
-    <div style="
-      height:44px;display:flex;align-items:center;
-      padding:0 18px;
-      border-right:1px solid ${accent}18;
-      gap:10px;
-    ">
-      <div style="width:3px;height:24px;background:${accent};flex-shrink:0;"></div>
-      <span style="font-family:${MONO};font-size:8px;font-weight:700;color:${accent};
-        letter-spacing:0.18em;text-transform:uppercase;">
-        DIV. ${String(division.id).padStart(2,'0')} — ${e(division.name)}
-      </span>
-    </div>
-    <div style="display:flex;align-items:center;gap:20px;">
-      <div style="font-family:${MONO};font-size:8px;color:#444;letter-spacing:0.14em;">
-        PRODUCT ${String(divProductIndex).padStart(2,'0')} OF ${String(divProductTotal).padStart(2,'0')}
-      </div>
-      <div style="font-family:${MONO};font-size:8px;color:#333;letter-spacing:0.1em;">
-        P.${String(globalIndex + 3).padStart(2,'0')}
-      </div>
-    </div>
-  </div>
-
-  <!-- Body: two-column -->
-  <div style="flex:1;display:flex;overflow:hidden;">
-
-    <!-- LEFT: Image column -->
-    <div style="
-      width:340px;flex-shrink:0;
-      position:relative;
-      background:${imgBg};
-      border-right:3px solid ${accent}22;
-    ">
-      <img
-        src="${e(product.imageUrl)}"
-        alt="${e(product.name)}"
-        loading="eager"
-        style="
-          width:100%;height:100%;
-          object-fit:${imgFit};
-          display:block;
-          ${product.contain ? 'padding:24px;' : ''}
-        "
-        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
-      />
-      <!-- Fallback if image fails -->
-      <div style="
-        display:none;
-        position:absolute;inset:0;
-        align-items:center;justify-content:center;
-        flex-direction:column;gap:12px;
-        background:linear-gradient(135deg, #0D1520 0%, #111B2B 100%);
-      ">
-        <div style="
-          font-family:${MONO};font-size:10px;color:${accent};
-          letter-spacing:0.14em;opacity:0.5;text-align:center;padding:0 20px;
-        ">${e(product.name)}</div>
-      </div>
-
-      <!-- Bottom overlay with product name -->
-      <div style="
-        position:absolute;bottom:0;left:0;right:0;
-        padding:14px 16px 10px;
-        background:linear-gradient(180deg, transparent 0%, rgba(4,6,12,0.92) 100%);
-      ">
-        <div style="font-family:${MONO};font-size:8px;color:#555;letter-spacing:0.12em;">
-          ${e(product.name)} — Durbolt Power
-        </div>
-      </div>
-
-      <!-- Division number watermark -->
-      <div style="
-        position:absolute;top:16px;left:16px;
-        font-family:${MONO};font-size:9px;font-weight:700;
-        color:${accent};letter-spacing:0.16em;
-        background:rgba(4,6,12,0.82);
-        border:1px solid ${accent}44;
-        padding:3px 8px;
-      ">DIV. ${String(division.id).padStart(2,'0')}</div>
-    </div>
-
-    <!-- RIGHT: Content column -->
-    <div style="
-      flex:1;
-      display:flex;flex-direction:column;
-      padding:28px 28px 20px;
-      overflow:hidden;
-    ">
-
-      <!-- Product name -->
-      <h2 style="
-        font-family:${HEADING};font-size:26px;font-weight:800;
-        color:#fff;letter-spacing:-0.01em;line-height:1.15;
-        margin-bottom:8px;
-      ">${e(product.name)}</h2>
-
-      <!-- Spec line -->
-      <p style="
-        font-family:${MONO};font-size:9.5px;color:${accent};
-        letter-spacing:0.05em;line-height:1.5;
-        margin-bottom:16px;
-      ">${e(product.spec)}</p>
-
-      <!-- Accent divider -->
-      <div style="
-        height:1px;
-        background:linear-gradient(90deg, ${accent}50, transparent);
-        margin-bottom:16px;
-      "></div>
-
-      <!-- Spec table -->
-      <div style="flex:1;overflow:hidden;margin-bottom:12px;">
-        ${specs}
-      </div>
-
-      <!-- Certifications -->
-      ${certs ? `
-        <div style="margin-bottom:10px;">
-          <div style="font-family:${MONO};font-size:7.5px;font-weight:700;color:#444;
-            letter-spacing:0.2em;text-transform:uppercase;margin-bottom:6px;">
-            CERTIFICATIONS
-          </div>
-          <div>${certs}</div>
-        </div>` : ''}
-
-      <!-- Applications -->
-      ${apps ? `
-        <div style="margin-bottom:14px;">
-          <div style="font-family:${MONO};font-size:7.5px;font-weight:700;color:#444;
-            letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">
-            APPLICATIONS
-          </div>
-          <p style="font-family:${MONO};font-size:8px;color:#666;
-            letter-spacing:0.04em;line-height:1.6;">
-            ${e(apps)}
-          </p>
-        </div>` : ''}
-
-      <!-- Separator -->
-      <div style="height:1px;background:rgba(255,255,255,0.05);margin-bottom:12px;"></div>
-
-      <!-- Disclaimer -->
-      <p style="
-        font-family:${MONO};font-size:7.5px;color:#444;
-        font-style:italic;letter-spacing:0.03em;line-height:1.5;
-        margin-bottom:12px;
-      ">Unit configuration, color, and finish may vary depending on project requirements and specifications.</p>
-
-      <!-- CTA -->
-      <div style="
-        background:${accent};
-        padding:12px 16px;
-        display:flex;align-items:center;justify-content:space-between;
-        flex-shrink:0;
-      ">
-        <span style="
-          font-family:${MONO};font-size:9px;font-weight:700;
-          color:#fff;letter-spacing:0.18em;text-transform:uppercase;
-        ">REQUEST QUOTE</span>
-        <span style="
-          font-family:${MONO};font-size:9px;color:rgba(255,255,255,0.85);
-          letter-spacing:0.08em;
-        ">SALES@DURBOLT.COM  →</span>
-      </div>
-
-    </div>
-  </div>
-</div>`;
-}
-
-// ─── Page: Back Cover ─────────────────────────────────────────────────────────
-
-function backCoverPage() {
-  return `
-<div class="page" style="
-  background:radial-gradient(ellipse at 50% 60%, #0D1825 0%, ${DARK2} 70%);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  position:relative;overflow:hidden;
-">
-  <!-- Grid pattern -->
-  <div style="position:absolute;inset:0;
-    background-image:
-      linear-gradient(rgba(232,99,26,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(232,99,26,0.03) 1px, transparent 1px);
-    background-size:44px 44px;pointer-events:none;
-  "></div>
-  <div style="position:absolute;inset:0;
-    background:radial-gradient(ellipse at center, transparent 30%, rgba(4,6,12,0.75) 100%);
-  "></div>
-
-  <!-- Corner accents -->
-  <div style="position:absolute;top:40px;left:40px;width:40px;height:40px;
-    border-top:2px solid ${BRAND};border-left:2px solid ${BRAND};opacity:0.5;"></div>
-  <div style="position:absolute;top:40px;right:40px;width:40px;height:40px;
-    border-top:2px solid ${BRAND};border-right:2px solid ${BRAND};opacity:0.5;"></div>
-  <div style="position:absolute;bottom:40px;left:40px;width:40px;height:40px;
-    border-bottom:2px solid ${BRAND};border-left:2px solid ${BRAND};opacity:0.5;"></div>
-  <div style="position:absolute;bottom:40px;right:40px;width:40px;height:40px;
-    border-bottom:2px solid ${BRAND};border-right:2px solid ${BRAND};opacity:0.5;"></div>
-
-  <!-- Content -->
-  <div style="position:relative;z-index:1;text-align:center;padding:0 60px;">
-    <div style="width:60px;height:2px;background:${BRAND};margin:0 auto 44px;
-      box-shadow:0 0 20px ${BRAND};"></div>
-
-    ${logoSVG(true)}
-
-    <div style="
-      font-family:${MONO};font-size:10px;letter-spacing:0.28em;color:#555;
-      text-transform:uppercase;margin:14px 0 52px;
-    ">Critical Power Infrastructure · Engineered for the World</div>
-
-    <!-- Contact block -->
-    <div style="
-      border:1px solid rgba(232,99,26,0.25);
-      padding:32px 52px;
-      display:inline-block;
-      background:rgba(232,99,26,0.03);
-      margin-bottom:40px;
-    ">
-      <div style="font-family:${MONO};font-size:9px;color:${BRAND};
-        letter-spacing:0.24em;text-transform:uppercase;margin-bottom:20px;">
-        GET IN TOUCH
-      </div>
-      ${[
-        ['WEBSITE',    'durbolt.com'],
-        ['SALES',      'sales@durbolt.com'],
-        ['QUOTES',     'quotes@durbolt.com'],
-        ['GENERAL',    'info@durbolt.com'],
-      ].map(([label, val]) => `
-        <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:10px;">
-          <span style="font-family:${MONO};font-size:8px;color:#444;
-            letter-spacing:0.18em;width:60px;text-align:right;">${label}</span>
-          <span style="font-family:${MONO};font-size:11px;color:#E0E0E0;
-            letter-spacing:0.08em;">${val}</span>
-        </div>`).join('')}
-    </div>
-
-    <!-- Division summary -->
-    <div style="display:flex;gap:2px;justify-content:center;">
-      ${DIVISIONS.map(d => `
-        <div style="
-          padding:12px 16px;
-          border:1px solid ${d.accentFrom}20;
-          border-top:2px solid ${d.accentFrom};
-          text-align:center;
-          min-width:120px;
-        ">
-          <div style="font-family:${MONO};font-size:8px;color:${d.accentFrom};
-            letter-spacing:0.14em;margin-bottom:4px;">DIV.${String(d.id).padStart(2,'0')}</div>
-          <div style="font-family:${HEADING};font-size:9px;color:#888;
-            line-height:1.4;">${e(d.name)}</div>
-        </div>`).join('')}
-    </div>
-
-    <div style="width:60px;height:2px;background:${BRAND};margin:44px auto 0;
-      box-shadow:0 0 20px ${BRAND};"></div>
-  </div>
-
-  <div style="
-    position:absolute;bottom:36px;left:0;right:0;
-    text-align:center;z-index:1;
-  ">
-    <div style="font-family:${MONO};font-size:8px;color:#333;letter-spacing:0.18em;">
-      © 2025 DURBOLT POWER · ALL RIGHTS RESERVED · PRODUCT CATALOGUE EDITION 2025
-    </div>
-  </div>
-</div>`;
-}
-
-// ─── Build HTML ───────────────────────────────────────────────────────────────
-
-function buildHTML() {
-  const pages = [];
-  pages.push(coverPage());
-  pages.push(aboutPage());
-
-  let globalIdx = 0;
-  for (const div of DIVISIONS) {
-    pages.push(divisionDivider(div));
-    div.products.forEach((product, i) => {
-      pages.push(productPage(product, div, i + 1, div.products.length, globalIdx + 1));
-      globalIdx++;
-    });
-  }
+  // Back cover
   pages.push(backCoverPage());
+  const totalPages = pg;
 
-  const totalPages = pages.length;
+  // Build TOC and inject
+  const toc = tocPage(tocItems, tocPg);
+  const finalPages = pages.map(p => (p === TOC_MARKER ? toc : p));
 
-  return `<!DOCTYPE html>
+  // Write HTML
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=794">
-  <title>Durbolt Power — Product Catalogue 2025</title>
-  <style>${CSS}</style>
+<meta charset="UTF-8"/>
+<title>Durbolt Power — Product Catalogue 2025</title>
+<style>${css}</style>
 </head>
 <body>
-
-  <!-- Web viewer toolbar (hidden in print) -->
-  <div id="viewer-bar">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <div style="width:20px;height:2px;background:#E8631A;"></div>
-      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
-        color:#fff;letter-spacing:0.18em;">DURBOLT <span style="color:#E8631A;">POWER</span></span>
-      <div style="width:20px;height:2px;background:#E8631A;"></div>
-    </div>
-    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#666;letter-spacing:0.2em;">
-      PRODUCT CATALOGUE 2025 · ${totalPages} PAGES · ${ALL_PRODUCT_COUNT} PRODUCTS
-    </div>
-    <a href="durbolt-power-catalogue-2025.pdf"
-       style="font-family:'JetBrains Mono',monospace;font-size:9px;
-              background:#E8631A;color:#fff;padding:6px 14px;
-              text-decoration:none;letter-spacing:0.14em;font-weight:700;">
-      ↓ DOWNLOAD PDF
-    </a>
-  </div>
-
-  <!-- Page spacer for fixed viewer bar -->
-  <div style="height:48px;" class="no-print"></div>
-
-  ${pages.join('\n\n')}
-
+${finalPages.join('\n')}
 </body>
 </html>`;
-}
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+  fs.writeFileSync(HTML_PATH, html);
+  console.log(`\nHTML: ${HTML_PATH}`);
+  console.log(`Pages: ${totalPages}`);
 
-async function main() {
-  console.log('🔧 Building HTML catalogue…');
-  const html = buildHTML();
-  const htmlPath = path.join(OUT, 'index.html');
-  writeFileSync(htmlPath, html, 'utf-8');
-  console.log(`✓  HTML written: ${htmlPath} (${(html.length / 1024).toFixed(0)} KB)`);
+  // Generate PDF with Playwright
+  console.log('\nLaunching Playwright for PDF...');
+  const browser = await chromium.launch({ headless: true });
+  const page    = await browser.newPage();
 
-  const productCount = DIVISIONS.reduce((a, d) => a + d.products.length, 0);
-  const pageCount = 1 + 1 + DIVISIONS.length + productCount + 1; // cover + about + dividers + products + back
-  console.log(`   Pages: ${pageCount} (cover + about + ${DIVISIONS.length} dividers + ${productCount} products + back cover)`);
+  await page.setViewportSize({ width: 1122, height: 794 });
+  await page.goto(`file://${HTML_PATH}`, { waitUntil: 'load' });
+  console.log('Waiting for fonts & images...');
+  await page.waitForTimeout(7000);
 
-  console.log('\n🖨  Launching Playwright for PDF generation…');
-  const PLAYWRIGHT = '/root/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
-  const { chromium } = await import(PLAYWRIGHT);
-
-  const browser = await chromium.launch({ args: ['--no-sandbox', '--disable-gpu', '--disable-web-security'] });
-  const page = await browser.newPage();
-
-  // Set viewport to A4 width
-  await page.setViewportSize({ width: 794, height: 1123 });
-
-  console.log('   Loading HTML…');
-  await page.goto(`file://${htmlPath}`, { waitUntil: 'load', timeout: 30000 });
-
-  // Wait for fonts + images
-  console.log('   Waiting for fonts and images…');
-  await page.waitForTimeout(6000);
-
-  // Check image load status
-  const imgStats = await page.evaluate(() => {
-    const imgs = Array.from(document.querySelectorAll('img'));
-    const loaded = imgs.filter(i => i.naturalWidth > 0).length;
-    const failed = imgs.filter(i => i.naturalWidth === 0 && i.complete).length;
-    return { total: imgs.length, loaded, failed };
-  });
-  console.log(`   Images: ${imgStats.loaded}/${imgStats.total} loaded, ${imgStats.failed} failed`);
-
-  // Generate PDF
-  const pdfPath = path.join(OUT, 'durbolt-power-catalogue-2025.pdf');
-  console.log('   Generating PDF…');
+  console.log('Generating PDF...');
   await page.pdf({
-    path: pdfPath,
-    format: 'A4',
+    path: PDF_PATH,
+    width: '297mm',
+    height: '210mm',
     printBackground: true,
     margin: { top: '0', right: '0', bottom: '0', left: '0' },
   });
+  console.log(`PDF: ${PDF_PATH}`);
 
-  console.log(`✓  PDF written: ${pdfPath}`);
+  // Screenshots of 4 page types
+  console.log('\nCapturing screenshots...');
+  const SHOT_DIR = '/root/catalogue-v2-screenshots';
+  fs.mkdirSync(SHOT_DIR, { recursive: true });
 
-  // Take screenshots for reporting
-  const screenshotsDir = path.join(OUT, 'screenshots');
-  mkdirSync(screenshotsDir, { recursive: true });
+  const els = await page.$$('.page');
+  console.log(`Found ${els.length} page elements`);
 
-  // Screenshot: Cover (page 1)
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await page.waitForTimeout(300);
-  const pages_els = await page.$$('.page');
+  // Cover=0, About=1, first division divider=3, first hero product=4
+  const targets = [
+    { idx: 0, name: 'cover' },
+    { idx: 1, name: 'about' },
+    { idx: 3, name: 'division-divider' },
+    { idx: 4, name: 'hero-product' },
+  ];
 
-  if (pages_els[0]) {
-    await pages_els[0].screenshot({ path: path.join(screenshotsDir, 'cover.png') });
-    console.log('   Screenshot: cover.png');
-  }
-
-  // Screenshot: First division divider (page 3)
-  if (pages_els[2]) {
-    await pages_els[2].screenshot({ path: path.join(screenshotsDir, 'division-1-divider.png') });
-    console.log('   Screenshot: division-1-divider.png');
-  }
-
-  // Screenshot: First product page (page 4)
-  if (pages_els[3]) {
-    await pages_els[3].screenshot({ path: path.join(screenshotsDir, 'product-1.png') });
-    console.log('   Screenshot: product-1.png');
-  }
-
-  // Screenshot: A product from division 2
-  if (pages_els[19]) {
-    await pages_els[19].screenshot({ path: path.join(screenshotsDir, 'division-2-product.png') });
-    console.log('   Screenshot: division-2-product.png');
+  for (const { idx, name } of targets) {
+    if (els[idx]) {
+      const p = `${SHOT_DIR}/${name}.png`;
+      await els[idx].screenshot({ path: p });
+      console.log(`  ${name}: ${p}`);
+    }
   }
 
   await browser.close();
 
-  // File size
-  const { statSync } = await import('fs');
-  const pdfSize = statSync(pdfPath).size;
-  const htmlSize = statSync(htmlPath).size;
-
-  console.log('\n═══════════════════════════════════════════════════');
-  console.log('  DURBOLT POWER — PRODUCT CATALOGUE 2025');
-  console.log('═══════════════════════════════════════════════════');
-  console.log(`  Total pages:     ${pageCount}`);
-  console.log(`  Products:        ${productCount} across ${DIVISIONS.length} divisions`);
-  console.log(`  PDF size:        ${(pdfSize / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`  HTML size:       ${(htmlSize / 1024).toFixed(0)} KB`);
-  console.log(`  Images loaded:   ${imgStats.loaded}/${imgStats.total}`);
-  console.log(`  Images failed:   ${imgStats.failed}`);
-  console.log('───────────────────────────────────────────────────');
-  console.log(`  PDF:  dist/catalogue/durbolt-power-catalogue-2025.pdf`);
-  console.log(`  HTML: dist/catalogue/index.html`);
-  console.log('═══════════════════════════════════════════════════');
+  const pdfMB = (fs.statSync(PDF_PATH).size / 1024 / 1024).toFixed(1);
+  console.log(`\n=== CATALOGUE V2 COMPLETE ===`);
+  console.log(`Pages: ${totalPages}`);
+  console.log(`PDF:   ${pdfMB} MB — ${PDF_PATH}`);
+  console.log(`HTML:  ${HTML_PATH}`);
+  console.log(`Shots: ${SHOT_DIR}/`);
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+main().catch(e => { console.error(e); process.exit(1); });
