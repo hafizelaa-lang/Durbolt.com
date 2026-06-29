@@ -22,7 +22,7 @@ if (!RESEND_API_KEY) { console.error("RESEND_API_KEY not set"); process.exit(1);
 
 const BCC = ["sales@durbolt.com"];
 const FROM = "sales@durbolt.com";
-const DELAY_MS = 8000;
+const DELAY_MS = 1_200_000; // 20 minutes
 
 // ─── Personalised HTML builder ───────────────────────────────────────────────
 
@@ -237,15 +237,6 @@ const recipients = [
     intro2: "Our product range includes grid-scale BESS, MV transformers, medium-voltage switchgear, and substation components &#8212; supplied factory-direct with full technical documentation and DDP fulfillment. With transformer and switchgear backlogs running 18&#8211;36 months across the industry, we provide an alternative sourcing channel.",
     closingLine: "If your procurement or grid development teams are evaluating suppliers for upcoming capital projects, we would welcome the conversation.",
   },
-  {
-    to: "dc-procurement@microsoft.com",
-    contactName: "Infrastructure Procurement",
-    companyName: "Microsoft Azure",
-    subject: "Critical Power Infrastructure — Durbolt Power",
-    intro1: "Durbolt Power supplies critical power infrastructure to hyperscale cloud operators building and expanding data center capacity across North America, Europe, and the Middle East. We understand that Microsoft Azure&#8217;s infrastructure program demands spec-grade, auditable equipment across every tier of the power stack.",
-    intro2: "Our portfolio covers the full cloud data center power chain &#8212; N+1 and 2N industrial UPS, standby and prime-rated generators, MV transformers, precision cooling, switchgear, and containerized BESS &#8212; all factory-direct with full technical documentation and DDP fulfillment. With MV transformer lead times running 24&#8211;36 months industry-wide, we offer an alternative sourcing path at proven scale.",
-    closingLine: "If your infrastructure or procurement teams are evaluating new power suppliers for upcoming campus builds or expansions, we would welcome the opportunity to provide specifications.",
-  },
   // ── UAE TARGETS ─────────────────────────────────────────────────────────────
   {
     to: "procurement@khazna.ae",
@@ -319,25 +310,9 @@ const recipients = [
     intro2: "Our portfolio includes precision cooling, standby generators, industrial UPS, BESS, and busway systems &#8212; supplied factory-direct with DDP fulfillment and full technical documentation. We are actively supporting data center infrastructure projects across the Gulf region.",
     closingLine: "If your development or procurement teams are evaluating power suppliers for upcoming builds, we would be glad to provide specifications and pricing.",
   },
-  {
-    to: "uae-infrastructure@microsoft.com",
-    contactName: "Infrastructure Team",
-    companyName: "Microsoft UAE",
-    subject: "Critical Power Infrastructure — Durbolt Power",
-    intro1: "Durbolt Power supplies critical power infrastructure to hyperscale cloud operators expanding data center capacity across the Middle East. We understand that Microsoft&#8217;s UAE infrastructure program &#8212; one of the largest cloud investments in the region &#8212; demands suppliers who can deliver spec-grade equipment on aggressive timelines.",
-    intro2: "Our portfolio covers the full data center power stack &#8212; N+1 and 2N industrial UPS, standby generators, MV transformers, switchgear, precision cooling, and containerized BESS &#8212; supplied factory-direct with DDP fulfillment into the UAE and full technical documentation. We are actively supporting hyperscale infrastructure builds across the Gulf.",
-    closingLine: "If your UAE infrastructure or procurement teams are evaluating power suppliers for upcoming builds, we would welcome the opportunity to provide specifications and pricing.",
-  },
-  {
-    to: "procurement@voltxds.com",
-    contactName: "Procurement Team",
-    companyName: "Volt/XDS",
-    subject: "Critical Power Infrastructure — Durbolt Power",
-    intro1: "Durbolt Power supplies critical power infrastructure to electrical contractors and infrastructure services firms executing mission-critical, data center, and industrial projects. We understand that Volt&#8217;s project portfolio demands sourcing partners who can move fast and deliver to specification.",
-    intro2: "Our product range includes modular power skids, busway systems, transfer switches, MV switchgear, motor control centers, and transformers &#8212; all factory-direct with full technical documentation. On time-sensitive projects where standard channel lead times create schedule risk, we offer a faster and more direct sourcing path.",
-    closingLine: "If your team has active or upcoming projects where power equipment sourcing is on the critical path, we would be glad to discuss what we can support.",
-  },
 ];
+
+// Microsoft Azure, Microsoft UAE, Volt/XDS — web form only, sent manually
 
 // ─── Send function ────────────────────────────────────────────────────────────
 
@@ -366,37 +341,37 @@ async function sendEmail({ to, contactName, companyName, subject, intro1, intro2
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-async function main() {
-  const args = process.argv.slice(2);
-  const dryRun = args.includes("--dry-run");
-  const testTo = args.find(a => a.startsWith("--test="))?.slice(7);
+function ts() {
+  return new Date().toTimeString().slice(0, 8); // HH:MM:SS
+}
 
-  console.log(`Batch 1 — ${recipients.length} recipient(s)${dryRun ? " [DRY RUN]" : ""}${testTo ? ` [TEST → ${testTo}]` : ""}`);
+async function main() {
+  const total = recipients.length;
+  console.log(`Batch 1 — ${total} recipients — LIVE MODE`);
 
   let sent = 0, failed = 0;
 
-  for (const r of recipients) {
-    const target = testTo ? { ...r, to: testTo, subject: r.subject + " [BATCH TEST - " + r.companyName + "]" } : r;
-    if (dryRun) {
-      const preview = target.intro1.replace(/&#\d+;|&[a-z]+;/g, " ").slice(0, 100);
-      console.log(`  [DRY RUN] ${target.companyName} | ${target.to} | ${target.subject}`);
-      console.log(`            intro1: "${preview}…"`);
-      continue;
-    }
+  for (let i = 0; i < recipients.length; i++) {
+    const r = recipients[i];
+    const num = i + 1;
+
     try {
-      const result = await sendEmail(target);
+      const result = await sendEmail(r);
       if (result.ok) {
-        console.log(`  ✓ ${target.to} | ${target.companyName} | id=${result.id}`);
+        console.log(`[${ts()}] Sent ${num}/${total}: ${r.companyName} → ${r.to} | ID: ${result.id}`);
         sent++;
       } else {
-        console.error(`  ✗ ${target.to} | ${target.companyName} | ${result.status} ${result.error}`);
+        console.error(`[${ts()}] FAILED ${num}/${total}: ${r.companyName} → ${r.to} | ${result.status} ${result.error}`);
         failed++;
       }
     } catch (e) {
-      console.error(`  ✗ ${target.to} | ${target.companyName} | Exception: ${e.message}`);
+      console.error(`[${ts()}] FAILED ${num}/${total}: ${r.companyName} → ${r.to} | Exception: ${e.message}`);
       failed++;
     }
-    if (recipients.indexOf(r) < recipients.length - 1) {
+
+    if (i < recipients.length - 1) {
+      const nextTime = new Date(Date.now() + DELAY_MS).toTimeString().slice(0, 8);
+      console.log(`Next send in 20 minutes — ${nextTime}`);
       await new Promise(res => setTimeout(res, DELAY_MS));
     }
   }
