@@ -286,7 +286,11 @@ function heroPage(product, div, images, num) {
 
   <div style="position:absolute;top:24px;left:54%;right:0;bottom:0;padding:18px 28px 22px 22px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;">
     <div style="font-family:${MONO};font-size:7px;color:${a};letter-spacing:0.2em;text-transform:uppercase;margin-bottom:10px;">${div.name.toUpperCase()}</div>
-    <div style="font-family:${SANS};font-weight:900;font-size:26px;color:#fff;text-transform:uppercase;line-height:1.0;letter-spacing:0.01em;margin-bottom:8px;">${product.name}</div>
+    <div style="font-family:${SANS};font-weight:900;font-size:26px;color:#fff;text-transform:uppercase;line-height:1.0;letter-spacing:0.01em;margin-bottom:6px;">${product.name}</div>
+    ${product.sku ? `<div style="display:inline-flex;align-items:center;gap:5px;margin-bottom:9px;padding:3px 8px;background:rgba(232,99,26,0.08);border:1px solid rgba(232,99,26,0.22);">
+      <span style="font-family:${MONO};font-size:5.5px;color:#555;letter-spacing:0.2em;text-transform:uppercase;">PART NO.</span>
+      <span style="font-family:${MONO};font-size:7.5px;font-weight:700;color:${a};letter-spacing:0.12em;">${product.sku}</span>
+    </div>` : ''}
     <div style="font-family:${MONO};font-size:7.5px;color:#777;line-height:1.55;margin-bottom:13px;padding-bottom:11px;border-bottom:1px solid #111d30;">${product.spec}</div>
 
     ${cats.map(cat => `
@@ -336,7 +340,8 @@ function midPanel(product, div, images, side) {
       <div style="position:absolute;inset:0;background:linear-gradient(to top,${DARK_BG}cc,transparent 50%);"></div>
       <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:${a};"></div>
     </div>
-    <div style="font-family:${SANS};font-weight:800;font-size:15px;color:#e8eaf0;text-transform:uppercase;line-height:1.1;letter-spacing:0.02em;margin-bottom:5px;">${product.name}</div>
+    <div style="font-family:${SANS};font-weight:800;font-size:15px;color:#e8eaf0;text-transform:uppercase;line-height:1.1;letter-spacing:0.02em;margin-bottom:3px;">${product.name}</div>
+    ${product.sku ? `<div style="font-family:${MONO};font-size:6px;color:${a};letter-spacing:0.12em;margin-bottom:5px;">${product.sku}</div>` : ''}
     <div style="font-family:${MONO};font-size:6.5px;color:#666;line-height:1.55;margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid #0c1528;">${product.spec}</div>
     ${cat ? `
     <div>
@@ -379,7 +384,8 @@ function smallCard(product, div, images) {
       <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:${a};"></div>
     </div>
     <div style="padding:10px 12px;flex:1;">
-      <div style="font-family:${SANS};font-weight:700;font-size:11.5px;color:#dde0e8;text-transform:uppercase;line-height:1.2;letter-spacing:0.03em;margin-bottom:5px;">${product.name}</div>
+      <div style="font-family:${SANS};font-weight:700;font-size:11.5px;color:#dde0e8;text-transform:uppercase;line-height:1.2;letter-spacing:0.03em;margin-bottom:2px;">${product.name}</div>
+      ${product.sku ? `<div style="font-family:${MONO};font-size:5.5px;color:${a};letter-spacing:0.12em;margin-bottom:4px;">${product.sku}</div>` : ''}
       <div style="font-family:${MONO};font-size:6px;color:#555;line-height:1.55;">${product.spec}</div>
     </div>
   </div>`;

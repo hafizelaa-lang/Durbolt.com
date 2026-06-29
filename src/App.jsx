@@ -1417,9 +1417,14 @@ function ProductCard({ product, division }) {
 
       {/* Content */}
       <div className="p-4 flex flex-col flex-1">
-        <h4 className="product-card-title text-sm font-black mb-1 leading-tight" style={{ fontFamily: HEADING, fontWeight: 800 }}>
+        <h4 className="product-card-title text-sm font-black mb-0.5 leading-tight" style={{ fontFamily: HEADING, fontWeight: 800 }}>
           {product.name}
         </h4>
+        {product.sku && (
+          <p style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#444", letterSpacing: "0.14em", marginBottom: "4px" }}>
+            {product.sku}
+          </p>
+        )}
         <p className="product-card-spec readable-text mb-2" style={{ color: "#C8C8C8" }}>{product.spec}</p>
         <p className="flex-1 mb-3" style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#555", fontStyle: "italic", letterSpacing: "0.03em", lineHeight: 1.45 }}>
           Unit configuration, color, and finish may vary depending on project requirements and specifications.
@@ -1779,7 +1784,7 @@ function FloatingField({ name, label, type = "text", value, onChange, required, 
 function RFQForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", product: "", message: "" });
+  const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", sku: "", product: "", message: "" });
   const [files, setFiles] = useState([]);
   const [fileError, setFileError] = useState("");
   const [dragOver, setDragOver] = useState(false);
@@ -1787,8 +1792,13 @@ function RFQForm() {
   const onChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
 
   useEffect(() => {
-    const pkg = new URLSearchParams(window.location.search).get("package");
+    const params = new URLSearchParams(window.location.search);
+    const pkg = params.get("package");
+    const skuParam = params.get("sku");
+    const productParam = params.get("product");
     if (pkg) setForm((f) => ({ ...f, message: `Requesting quote for package: ${pkg}` }));
+    if (skuParam) setForm((f) => ({ ...f, sku: skuParam }));
+    if (productParam) setForm((f) => ({ ...f, product: productParam }));
   }, []);
 
   const onAddFiles = (incoming) => {
@@ -1856,7 +1866,7 @@ function RFQForm() {
                       Our team will contact you within 24 hours with pricing and availability.
                     </p>
                     <button
-                      onClick={() => { setSubmitted(false); setForm({ name:"",company:"",email:"",phone:"",product:"",message:"" }); setFiles([]); setFileError(""); }}
+                      onClick={() => { setSubmitted(false); setForm({ name:"",company:"",email:"",phone:"",sku:"",product:"",message:"" }); setFiles([]); setFileError(""); }}
                       className="text-xs font-bold uppercase px-5 py-2.5 transition-all duration-200"
                       style={{ border: "1px solid rgba(232,99,26,0.35)", color: "#E8631A", background: "transparent", cursor: "pointer", letterSpacing: "0.16em" }}
                     >
@@ -1870,6 +1880,7 @@ function RFQForm() {
                       <FloatingField name="company" label="Company / Organization *" required value={form.company} onChange={onChange} />
                       <FloatingField name="email" label="Business Email *" type="email" required value={form.email} onChange={onChange} />
                       <FloatingField name="phone" label="Phone Number" type="tel" value={form.phone} onChange={onChange} />
+                      <FloatingField name="sku" label="Part No. / SKU (e.g. DBT-01-GEN-001)" value={form.sku} onChange={onChange} />
                     </div>
 
                     <div className={`float-field mb-4 ${form.product ? "has-value" : ""}`}>

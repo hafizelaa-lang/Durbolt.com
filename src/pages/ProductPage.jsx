@@ -275,11 +275,21 @@ export default function ProductPage() {
           </div>
 
           <h1
-            className="font-black leading-tight mb-4"
+            className="font-black leading-tight mb-3"
             style={{ fontFamily: HEADING, fontSize: "clamp(2rem,5vw,3.5rem)", fontWeight: 800, letterSpacing: "-0.02em" }}
           >
             {product.name}
           </h1>
+
+          {product.sku && (
+            <div
+              className="inline-flex items-center gap-2 mb-4 px-3 py-1.5"
+              style={{ background: "rgba(232,99,26,0.06)", border: "1px solid rgba(232,99,26,0.2)", fontFamily: MONO }}
+            >
+              <span style={{ fontSize: "0.6rem", color: "#666", letterSpacing: "0.18em", textTransform: "uppercase" }}>PART NO.</span>
+              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: BRAND, letterSpacing: "0.14em" }}>{product.sku}</span>
+            </div>
+          )}
 
           <h2
             className="font-bold mb-2"
@@ -297,7 +307,7 @@ export default function ProductPage() {
 
           <div className="flex flex-wrap gap-4">
             <a
-              href="/#rfq"
+              href={`/?sku=${encodeURIComponent(product.sku || "")}&product=${encodeURIComponent(product.name)}#rfq`}
               className="inline-flex items-center gap-3 px-8 py-4 font-bold text-sm uppercase transition-all duration-200"
               style={{ background: BRAND, color: "#fff", clipPath: "polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%)", letterSpacing: "0.16em" }}
               onMouseEnter={(e) => (e.currentTarget.style.background = BRAND_DARK)}
@@ -391,6 +401,7 @@ export default function ProductPage() {
               {/* Key facts */}
               <div className="grid grid-cols-2 gap-3 mb-8">
                 {[
+                  ...(product.sku ? [["Part No.", product.sku]] : []),
                   ["Division", division.name],
                   ["Certification", "IEC / UL / ANSI"],
                   ["Supply Model", "Factory-Direct B2B"],
@@ -406,7 +417,7 @@ export default function ProductPage() {
               </div>
 
               <a
-                href="/#rfq"
+                href={`/?sku=${encodeURIComponent(product.sku || "")}&product=${encodeURIComponent(product.name)}#rfq`}
                 className="inline-flex items-center gap-3 px-8 py-4 font-bold text-sm uppercase w-full justify-center transition-all duration-200"
                 style={{ background: BRAND, color: "#fff", clipPath: "polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%)", letterSpacing: "0.16em" }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = BRAND_DARK)}

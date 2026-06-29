@@ -155,7 +155,12 @@ function ProductCard({ product, division }) {
         </div>
       </div>
       <div className="p-4">
-        <h3 className="text-sm font-black mb-1 leading-tight" style={{ fontFamily: HEADING, fontWeight: 800, color: "#fff" }}>{product.name}</h3>
+        <h3 className="text-sm font-black mb-0.5 leading-tight" style={{ fontFamily: HEADING, fontWeight: 800, color: "#fff" }}>{product.name}</h3>
+        {product.sku && (
+          <p style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#444", letterSpacing: "0.13em", marginBottom: "4px" }}>
+            {product.sku}
+          </p>
+        )}
         <p className="text-xs mb-2" style={{ color: "#888", fontFamily: MONO, lineHeight: 1.5 }}>{product.spec}</p>
         <p style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#555", fontStyle: "italic", letterSpacing: "0.03em", lineHeight: 1.45, marginBottom: "10px" }}>
           Unit configuration, color, and finish may vary depending on project requirements and specifications.
