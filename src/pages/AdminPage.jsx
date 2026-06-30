@@ -1152,6 +1152,90 @@ function InquiriesTab({ leads }) {
   );
 }
 
+// ── Tab: Catalogue ────────────────────────────────────────────────────────────
+function CatalogueTab({ token }) {
+  const [regenState, setRegenState] = useState("idle"); // idle | running | done | error
+  const [regenMsg,   setRegenMsg]   = useState("");
+
+  async function handleRegen() {
+    setRegenState("running");
+    setRegenMsg("");
+    try {
+      const r = await fetch("/api/ops/regen-catalogue", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await r.json();
+      if (r.ok) { setRegenState("done");  setRegenMsg(d.message || "Started"); }
+      else       { setRegenState("error"); setRegenMsg(d.error  || "Failed");   }
+    } catch (e) {
+      setRegenState("error"); setRegenMsg(e.message);
+    }
+  }
+
+  const regenColor = regenState === "done" ? C.green : regenState === "error" ? C.red : C.amber;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 720 }}>
+      <Card>
+        <PanelHeader title="Catalogue Downloads" />
+        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+          {[
+            { label: "Web Version (Compressed)", href: "/catalogue/durbolt-power-catalogue-2025-web.pdf", note: "Fast sharing — compressed JPEG images" },
+            { label: "Print Version (Full Resolution)", href: "/catalogue/durbolt-power-catalogue-2025.pdf", note: "Full quality — for print and high-res review" },
+          ].map(({ label, href, note }) => (
+            <div key={href} style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              gap: 16, padding: "12px 16px",
+              background: C.panelSolid, border: `1px solid ${C.border}`, borderRadius: 8,
+            }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: MONO }}>{label}</div>
+                <div style={{ fontSize: 11, color: C.textDim, fontFamily: MONO, marginTop: 4 }}>{note}</div>
+              </div>
+              <a href={href} target="_blank" rel="noreferrer" style={{
+                padding: "7px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                background: `${C.cyan}22`, color: C.cyan, border: `1px solid ${C.cyan}55`,
+                textDecoration: "none", whiteSpace: "nowrap", fontFamily: MONO, letterSpacing: "0.08em",
+              }}>↓ OPEN PDF</a>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card>
+        <PanelHeader title="Regenerate Catalogue" right={
+          <span style={{ fontSize: 10, color: C.textDim, fontFamily: MONO }}>~15 min · runs in background</span>
+        } />
+        <div style={{ padding: "20px 24px" }}>
+          <p style={{ fontSize: 12, color: C.textMid, fontFamily: MONO, marginBottom: 16, lineHeight: 1.7 }}>
+            Regenerates both PDFs from source data. Fetches fresh product images, rebuilds all 52 pages,
+            outputs full-res and compressed web versions, then replaces the landing page.
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+            <button
+              onClick={handleRegen}
+              disabled={regenState === "running"}
+              style={{
+                padding: "9px 18px", borderRadius: 8, fontSize: 11, fontWeight: 700,
+                background: regenState === "running" ? `${C.amber}11` : `${C.amber}22`,
+                color: C.amber, border: `1px solid ${C.amber}55`,
+                cursor: regenState === "running" ? "default" : "pointer",
+                fontFamily: MONO, letterSpacing: "0.1em", textTransform: "uppercase",
+                opacity: regenState === "running" ? 0.6 : 1,
+              }}>
+              {regenState === "running" ? "⟳ STARTING…" : "↺ REGENERATE CATALOGUE"}
+            </button>
+            {regenMsg && (
+              <span style={{ fontSize: 11, color: regenColor, fontFamily: MONO }}>{regenMsg}</span>
+            )}
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 const TABS = [
   { id: "overview",   label: "Overview",   icon: "▦" },
@@ -1159,6 +1243,7 @@ const TABS = [
   { id: "pages",      label: "Pages",      icon: "▤" },
   { id: "traffic",    label: "Traffic",    icon: "⚡" },
   { id: "inquiries",  label: "Inquiries",  icon: "✉" },
+  { id: "catalogue",  label: "Catalogue",  icon: "⬡" },
 ];
 
 function timeAgo(d) {
@@ -1311,6 +1396,7 @@ function Dashboard({ token, onLogout }) {
         {tab === "pages"      && <PagesTab topPages={data?.topPages || []} pageBounce={data?.pageBounce || {}} />}
         {tab === "traffic"    && <TrafficTab sources={data?.sources || []} visits={data?.visits || []} />}
         {tab === "inquiries"  && <InquiriesTab leads={leads} />}
+        {tab === "catalogue"  && <CatalogueTab token={token} />}
       </div>
     </div>
   );

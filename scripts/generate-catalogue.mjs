@@ -493,14 +493,126 @@ ${viewerJs}
     }
   }
 
+  // Compressed web PDF (images still loaded — browser still open)
+  await generateWebPdf(browser);
+
   await browser.close();
 
-  const pdfMB = (fs.statSync(PDF_PATH).size / 1024 / 1024).toFixed(1);
-  console.log(`\n=== CATALOGUE V5 COMPLETE ===`);
-  console.log(`Pages: ${totalPages}`);
-  console.log(`PDF:   ${pdfMB} MB — ${PDF_PATH}`);
-  console.log(`HTML:  ${HTML_PATH}`);
-  console.log(`Shots: ${SHOT_DIR}/`);
+  // Overwrite viewer HTML with clean download landing page
+  writeLandingPage(pgCount);
+
+  const pdfMB    = (fs.statSync(PDF_PATH).size / 1e6).toFixed(1);
+  const webPdfMB = (fs.statSync(path.join(OUT_DIR, 'durbolt-power-catalogue-2025-web.pdf')).size / 1e6).toFixed(1);
+  console.log(`\n=== CATALOGUE COMPLETE ===`);
+  console.log(`Pages:   ${totalPages}`);
+  console.log(`PDF:     ${pdfMB} MB — ${PDF_PATH}`);
+  console.log(`Web PDF: ${webPdfMB} MB — ${path.join(OUT_DIR, 'durbolt-power-catalogue-2025-web.pdf')}`);
+  console.log(`Landing: ${HTML_PATH}`);
+}
+
+// ── Compressed web PDF ───────────────────────────────────────────────────────
+
+async function generateWebPdf(browser) {
+  const sharp    = (await import('sharp')).default;
+  const WEB_DIR  = path.join(OUT_DIR, 'img-web');
+  const WEB_HTML = path.join(OUT_DIR, '_catalogue-web.html');
+  const WEB_PDF  = path.join(OUT_DIR, 'durbolt-power-catalogue-2025-web.pdf');
+
+  fs.mkdirSync(WEB_DIR, { recursive: true });
+
+  const imgDir  = path.join(OUT_DIR, 'img');
+  const imgFiles = fs.readdirSync(imgDir).filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f));
+  console.log(`\nCompressing ${imgFiles.length} images (60% JPEG, max 800px)…`);
+  const nameMap = {};
+  for (const f of imgFiles) {
+    const webName = f.replace(/\.(png|webp)$/i, '.jpg');
+    nameMap[f] = webName;
+    await sharp(path.join(imgDir, f))
+      .resize({ width: 800, withoutEnlargement: true })
+      .jpeg({ quality: 60 })
+      .toFile(path.join(WEB_DIR, webName));
+  }
+
+  // Build web HTML — swap img/ → img-web/ + strip lazy attrs so Playwright loads all
+  let html = fs.readFileSync(HTML_PATH, 'utf8');
+  html = html.replace(/loading="lazy" /g, '');
+  html = html.replace(/src="img\/([^"]+)"/g, (_, fname) => {
+    const webName = nameMap[fname] || fname.replace(/\.(png|webp)$/i, '.jpg');
+    return `src="img-web/${webName}"`;
+  });
+  fs.writeFileSync(WEB_HTML, html);
+
+  const page = await browser.newPage();
+  await page.setViewportSize({ width: 1122, height: 794 });
+  await page.goto(`file://${WEB_HTML}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.waitForTimeout(8000);
+  await page.pdf({
+    path: WEB_PDF,
+    width: '297mm', height: '210mm',
+    printBackground: true,
+    margin: { top: '0', right: '0', bottom: '0', left: '0' },
+  });
+  await page.close();
+
+  fs.unlinkSync(WEB_HTML);
+  fs.rmSync(WEB_DIR, { recursive: true });
+
+  const mb = (fs.statSync(WEB_PDF).size / 1e6).toFixed(1);
+  console.log(`Web PDF: ${mb} MB — ${WEB_PDF}`);
+}
+
+// ── Download landing page ─────────────────────────────────────────────────────
+
+function writeLandingPage(pgCount) {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Durbolt Power — Product Catalogue 2025</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{min-height:100%;background:#080F1A;color:#fff;font-family:'Helvetica Neue',Arial,sans-serif;}
+body{display:flex;align-items:center;justify-content:center;padding:32px 16px;min-height:100vh;}
+.wrap{max-width:600px;width:100%;text-align:center;}
+.dmark{height:64px;width:auto;display:block;margin:0 auto 28px;}
+.logo{font-size:11px;font-weight:700;letter-spacing:0.28em;color:#fff;text-transform:uppercase;margin-bottom:10px;}
+.logo span{color:#E8631A;}
+.title{font-size:32px;font-weight:800;letter-spacing:-0.01em;color:#fff;margin-bottom:6px;line-height:1.1;}
+.meta{font-family:'JetBrains Mono','Courier New',monospace;font-size:11px;color:#555;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:36px;}
+.rule{width:40px;height:2px;background:#E8631A;margin:20px auto;}
+.btn-primary{display:block;width:100%;padding:18px 24px;background:#E8631A;color:#fff;
+  font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+  text-decoration:none;border-radius:2px;margin-bottom:14px;
+  transition:background 0.15s;}
+.btn-primary:hover{background:#d05514;}
+.btn-secondary{display:inline-block;font-family:'JetBrains Mono','Courier New',monospace;
+  font-size:11px;color:#555;letter-spacing:0.1em;text-decoration:none;
+  border-bottom:1px solid #222;padding-bottom:2px;transition:color 0.15s,border-color 0.15s;}
+.btn-secondary:hover{color:#999;border-color:#555;}
+.desc{margin:32px 0;font-size:12px;color:#444;letter-spacing:0.1em;line-height:1.8;}
+.footer{margin-top:40px;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;
+  color:#333;letter-spacing:0.1em;line-height:2;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <img class="dmark" src="https://i.ibb.co/Q7f5CDdT/D2-F79-BA4-D0-F2-42-F5-9-F8-B-9-C0-ACB270-BC3.png" alt="Durbolt D"/>
+  <div class="logo"><span>—</span> DURBOLT <span>POWER</span> <span>—</span></div>
+  <div class="title">2025 Product Catalogue</div>
+  <div class="meta">${pgCount} pages &nbsp;·&nbsp; 44 products</div>
+  <div class="rule"></div>
+  <a class="btn-primary" href="durbolt-power-catalogue-2025-web.pdf">&#8595; DOWNLOAD CATALOGUE (PDF)</a>
+  <a class="btn-secondary" href="durbolt-power-catalogue-2025.pdf">&#8595; Full Resolution Version</a>
+  <div class="desc">Critical Power Infrastructure &nbsp;·&nbsp; Factory-Direct Supply &nbsp;·&nbsp; North America &amp; Middle East</div>
+  <div class="footer">
+    sales@durbolt.com &nbsp;·&nbsp; durbolt.com &nbsp;·&nbsp; +1 (609) 369-0422
+  </div>
+</div>
+</body>
+</html>`;
+  fs.writeFileSync(HTML_PATH, html);
+  console.log(`Landing page: ${HTML_PATH}`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

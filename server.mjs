@@ -1,6 +1,7 @@
 import { createServer } from "http";
 import { existsSync, statSync, createReadStream, mkdirSync, readFileSync, appendFileSync, writeFileSync } from "fs";
 import { extname, join, normalize } from "path";
+import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { createGzip } from "zlib";
@@ -534,6 +535,17 @@ async function handleOpsLeads(req, res) {
   }
 }
 
+async function handleRegenCatalogue(req, res) {
+  if (!requireAuth(req, res)) return;
+  const child = spawn("node", ["scripts/generate-catalogue.mjs"], {
+    cwd: __dirname,
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
+  return jsonRes(res, 202, { ok: true, message: "Catalogue regeneration started (runs ~15 min)" });
+}
+
 // ─── Main server ─────────────────────────────────────────────────────────────
 
 const server = createServer(async (req, res) => {
@@ -550,7 +562,8 @@ const server = createServer(async (req, res) => {
     if (urlPath === "/api/analytics" && req.method === "GET") return handleAnalytics(req, res);
     if (urlPath === "/api/admin/login" && req.method === "POST") return handleLogin(req, res);
     if (urlPath === "/api/rfq" && req.method === "POST") return handleRFQ(req, res);
-    if (urlPath === "/api/ops/leads" && req.method === "GET") return handleOpsLeads(req, res);
+    if (urlPath === "/api/ops/leads"           && req.method === "GET")  return handleOpsLeads(req, res);
+    if (urlPath === "/api/ops/regen-catalogue" && req.method === "POST") return handleRegenCatalogue(req, res);
 
     return jsonRes(res, 404, { error: "Not found" });
   }
