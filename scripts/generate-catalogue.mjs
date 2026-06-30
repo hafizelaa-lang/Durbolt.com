@@ -90,9 +90,9 @@ table{border-collapse:collapse;}
 .viewer-meta{font-family:"JetBrains Mono",monospace;font-size:7px;color:#6a6a7a;letter-spacing:0.14em;text-align:center;flex:1;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .viewer-dl{font-family:"JetBrains Mono",monospace;font-size:8px;font-weight:700;color:#E8631A;letter-spacing:0.1em;text-decoration:none;white-space:nowrap;border:1px solid rgba(232,99,26,0.4);padding:5px 10px;flex-shrink:0;}
 .viewer-dl:hover{background:rgba(232,99,26,0.1);}
-.viewer-pages{overflow-x:hidden;background:#050A12;padding-top:68px;padding-bottom:48px;}
-.viewer-pages .page{display:block;margin:0 auto 16px auto;transform-origin:top center;box-shadow:0 6px 32px rgba(0,0,0,0.65),0 0 0 1px rgba(232,99,26,0.07);}
-@media print{.viewer-toolbar{display:none!important;}.viewer-pages{padding-top:0!important;}body,html{margin:0;padding:0;}.page{margin:0;}}
+.viewer-pages{background:#050A12;padding-top:68px;padding-bottom:48px;overflow-x:hidden;}
+.viewer-pages .page{width:1122px;height:794px;display:block;transform-origin:top left;box-shadow:0 6px 32px rgba(0,0,0,0.65),0 0 0 1px rgba(232,99,26,0.07);}
+@media print{.viewer-toolbar{display:none!important;}.viewer-pages{padding-top:0!important;}body,html{margin:0;padding:0;}.viewer-pages .page{transform:none!important;margin:0!important;}}
 `;
 
 function logoHTML(size = 26) {
@@ -412,27 +412,26 @@ async function main() {
 </div>`;
   const viewerJs = `<script>
 (function(){
-  var PW = 1122;
-  function scale(){
+  function applyScale(){
     var vw = window.innerWidth || document.documentElement.clientWidth;
-    var s = Math.min(1, (vw - 8) / PW);
+    var s  = Math.min(1, vw / 1122);
+    var ml = s < 1 ? 0 : Math.max(0, Math.floor((vw - 1122) / 2));
     document.querySelectorAll('.viewer-pages .page').forEach(function(p){
-      p.style.transformOrigin = 'top center';
-      p.style.transform = 'scale(' + s + ')';
-      p.style.marginBottom = Math.round((794 * s) - 794 + 16) + 'px';
-      p.style.marginLeft = 'auto';
-      p.style.marginRight = 'auto';
+      p.style.transform    = 'scale(' + s + ')';
+      p.style.marginLeft   = ml + 'px';
+      p.style.marginBottom = Math.round(794 * s - 794 + 4) + 'px';
     });
   }
-  scale();
-  window.addEventListener('resize', scale, { passive: true });
+  applyScale();
+  window.addEventListener('resize', applyScale, { passive: true });
+  setTimeout(applyScale, 500);
 })();
 </script>`;
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=0.5, maximum-scale=5, user-scalable=yes"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes"/>
 <title>Durbolt Power — Product Catalogue 2025</title>
 <style>${css}</style>
 </head>
