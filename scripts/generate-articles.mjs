@@ -36,7 +36,7 @@ const GENERATE_ALL = process.argv.includes("--generate-all");
 const SKIP_BUILD = process.argv.includes("--skip-build");
 const BACKFILL_IMAGES = process.argv.includes("--backfill-images");
 
-const UNIVERSAL_HERO_IMG = 'https://i.ibb.co/rRGWng3L/A8-C483-DD-2-D55-4441-93-DB-BDB6-E933-D669.png';
+const UNIVERSAL_HERO_IMG = '/scene2-tower-storm.jpg';
 
 // ── KEYWORD MAPPING ────────────────────────────────────────────────────────
 
@@ -376,7 +376,7 @@ async function generateOne(config, existingSlugs) {
   }
 
   const title = apiData.title || config.topic;
-  const img = await getArticleHeroImage(title, config.topic, config.slug);
+  const img = UNIVERSAL_HERO_IMG;
 
   const article = {
     slug: config.slug,
@@ -412,7 +412,7 @@ async function backfillImages() {
   for (const article of articles) {
     console.log(`\n  Processing: ${article.slug}`);
     const oldUrl = article.heroImg;
-    const newUrl = await getArticleHeroImage(article.title, article.title, article.slug);
+    const newUrl = UNIVERSAL_HERO_IMG;
 
     if (newUrl !== oldUrl) {
       article.heroImg = newUrl;
