@@ -590,7 +590,10 @@ const server = createServer(async (req, res) => {
   const ext = extname(filePath);
   const contentType = MIME[ext] || "application/octet-stream";
   const isHtml = ext === ".html";
-  const cacheControl = isHtml ? "no-cache, must-revalidate" : "public, max-age=31536000, immutable";
+  const isFavicon = /favicon|apple-touch-icon/.test(filePath);
+  const cacheControl = isHtml ? "no-cache, must-revalidate"
+    : isFavicon ? "public, max-age=86400, must-revalidate"
+    : "public, max-age=31536000, immutable";
   const acceptsGzip = (req.headers["accept-encoding"] || "").includes("gzip");
   const canGzip = acceptsGzip && COMPRESSIBLE.has(ext);
 

@@ -376,7 +376,7 @@ async function generateOne(config, existingSlugs) {
   }
 
   const title = apiData.title || config.topic;
-  const img = UNIVERSAL_HERO_IMG;
+  const img = await getArticleHeroImage(title, config.topic, config.slug);
 
   const article = {
     slug: config.slug,
@@ -412,7 +412,7 @@ async function backfillImages() {
   for (const article of articles) {
     console.log(`\n  Processing: ${article.slug}`);
     const oldUrl = article.heroImg;
-    const newUrl = UNIVERSAL_HERO_IMG;
+    const newUrl = await getArticleHeroImage(article.title, article.title, article.slug);
 
     if (newUrl !== oldUrl) {
       article.heroImg = newUrl;
